@@ -25,6 +25,7 @@ def threshold_binarize(img, tolerance):
 
 
 def run_connected_components(img, dist_tol=5, color_tol=45):
+    orig_shape = img.shape
     img = np.copy(img)
 
     #crop image (change to detect automatically)
@@ -37,10 +38,16 @@ def run_connected_components(img, dist_tol=5, color_tol=45):
     img = threshold_binarize(img, color_tol)
     img = cv2.medianBlur(img, 3)
 
-    center_masses, directions = singulate(img, dist_tol)
+    center_masses, directions, masks = singulate(img, dist_tol)
     #transform centroids to uncropped image
     center_masses = [[c[0] + lo_y, c[1] + lo_x] for c in center_masses]
-    return center_masses, directions
+    #do the same for masks
+    new_masks = []
+    for m in masks:
+        new_m = np.zeros(orig_shape[:2])
+        new_m[lo_y:hi_y,lo_x:hi_x] = m
+        new_masks.append(new_m)
+    return center_masses, directions, masks
 
 def draw(img, center_masses, directions):
     box_color = [255, 0, 0]
@@ -60,9 +67,9 @@ def draw(img, center_masses, directions):
         else:
             img[int(cm[0] - 1):int(cm[0] + 1),
             int(cm[1] - line_size):int(cm[1] + line_size)] = line_color
-
-    cv2.imshow('debug',img)
-    cv2.waitKey(30)
+    #
+    # cv2.imshow('debug',img)
+    # cv2.waitKey(30)
     return img
 
 if __name__ == "__main__":
@@ -71,12 +78,15 @@ if __name__ == "__main__":
     #background range for threshholding the image
     color_tol = 45
 
+    folder = "data/example_images/"
+    filen = "frame_40_" + str(img_num)
+
     for img_num in range(15):
-        name_pre = "images/frame_40_" + str(img_num)
-        img = cv2.imread(name_pre + ".png")
+        img = cv2.imread(folder + filen + ".png")
 
-        center_masses, directions = run_connected_components(img, dist_tol, color_tol)
-
+        center_masses, directions, masks = run_connected_components(img, dist_tol, color_tol)
+        for i, m in enumerate(masks):
+            cv2.imwrite(folder + "mask_" + filen + "_" + str(i) + ".png", m)
         img_out = draw(img, center_masses, directions)
 
-        cv2.imwrite(name_pre + "_out.png", img_out)
+        cv2.imwrite(folder + "out_" + filen + ".png", img_out)

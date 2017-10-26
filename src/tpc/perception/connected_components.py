@@ -2,6 +2,7 @@ import numpy as np
 import math
 import cv2
 from scipy.ndimage.measurements import label
+from scipy.misc import imresize
 from union import UnionFind
 from skimage.measure import block_reduce
 from groups import Group
@@ -89,6 +90,7 @@ two groups are singulated if they are more than `tol` apart
 returns centroid and orientation of each group
 """
 def singulate(img, tol):
+    orig_shape = img.shape
     #halve image size to increase speed
     scale_factor = 2
     area_cutoff = 80
@@ -102,6 +104,7 @@ def singulate(img, tol):
 
     center_masses = [map(lambda x: x * scale_factor, g.center_mass) for g in groups]
     directions = [g.orientation() for g in groups]
+    masks = [imresize(g.get_mask(len(img),len(img[0])),orig_shape)  for g in groups]
     # coords = [map(lambda x: x * scale_factor, g.get_bounds()) for g in groups]
     # return coords
-    return center_masses, directions
+    return center_masses, directions, masks

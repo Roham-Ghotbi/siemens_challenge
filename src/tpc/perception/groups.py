@@ -112,3 +112,9 @@ class Group:
 
     def updateLabel(self, newLabel):
         self.label = newLabel
+
+    def get_mask(self, y_len, x_len):
+        img = np.zeros((y_len, x_len))
+        for p in self.points:
+            img[p[0]][p[1]] = 1
+        return img
