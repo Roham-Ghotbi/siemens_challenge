@@ -117,7 +117,7 @@ class BedMaker():
         return
 
 
-    def bed_make(self):
+    def lego_demo(self):
 
         self.rollout_data = []
         self.get_new_grasp = True
@@ -137,25 +137,18 @@ class BedMaker():
   
                 c_m, dirs = run_connected_components(c_img)
                 draw(c_img,c_m,dirs)
-                
-                
-                c_img = self.cam.read_color_data()
-                d_img = self.cam.read_depth_data()
-               
 
-                grasp_name = self.gripper.get_grasp_pose(c_m[0],c_m[1],z,rot,c_img=c_img)
+                pose,rot = self.compute_grasp(c_m,dirs,d_img)
+                IPython.embed()
+
+                # grasp_name = self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=c_img)
         
-               
+                # self.execute_grasp(grasp_name)
                 
-                pick_found,bed_pick = self.check_card_found()
-
-                self.gripper.execute_grasp(bed_pick,self.whole_body,'head_down')
-                
-                self.grasp_count += 1
-                self.whole_body.move_to_go()
-                self.tt.move_to_pose(self.omni_base,'lower_start')
-                time.sleep(1)
-                self.whole_body.move_to_joint_positions({'head_tilt_joint':-0.8})
+                # self.whole_body.move_to_go()
+                # self.tt.move_to_pose(self.omni_base,'lower_start')
+                # time.sleep(1)
+                # self.whole_body.move_to_joint_positions({'head_tilt_joint':-0.8})
  
     
 
@@ -164,15 +157,36 @@ class BedMaker():
         
         whole_body.end_effector_frame = 'hand_palm_link'
         
-        whole_body.move_end_effector_pose(geometry.pose(),cards[0])
+        whole_body.move_end_effector_pose(geometry.pose(),grasp_name)
 
 
-        self.gripper.open_gripper()
+        self.gripper.close_gripper()
         
         whole_body.move_end_effector_pose(geometry.pose(z=-0.1),'head_down')
         
     
-        self.com.close_gripper()
+        self.gripper.open_gripper()
+
+
+    def compute_grasp(c_m,dirs,d_img):
+
+        if dirs: 
+            rot = 1.57
+        else: 
+            rot = 0 
+
+
+        x = c_m[0]
+        y = c_m[1]
+
+        z_box = d_img[x-20:x+20,y-20:y:20]
+
+        z = self.gp.find_mean_depth(z_box)
+
+        return [x,y,z],rot
+
+
+
     
     def position_head(self):
 
@@ -189,5 +203,5 @@ if __name__ == "__main__":
     
     cp = BedMaker()
 
-    cp.bed_make()
-
+    # cp.bed_make()
+    cp.lego_demo()
