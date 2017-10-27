@@ -89,7 +89,7 @@ input `img` is binarized between fg and bg
 two groups are singulated if they are more than `tol` apart
 returns centroid and orientation of each group
 """
-def singulate(img, tol):
+def get_cluster_info(img, tol):
     orig_shape = img.shape
     #halve image size to increase speed
     scale_factor = 2
