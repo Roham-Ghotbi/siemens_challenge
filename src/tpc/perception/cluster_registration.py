@@ -67,9 +67,9 @@ def draw(img, center_masses, directions):
         else:
             img[int(cm[0] - 1):int(cm[0] + 1),
             int(cm[1] - line_size):int(cm[1] + line_size)] = line_color
-    #
-    # cv2.imshow('debug',img)
-    # cv2.waitKey(30)
+    
+    cv2.imshow('debug',img)
+    cv2.waitKey(30)
     return img
 
 if __name__ == "__main__":
