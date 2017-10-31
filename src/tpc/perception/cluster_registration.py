@@ -3,6 +3,7 @@ import cv2
 import IPython
 from connected_components import get_cluster_info
 # from perception import ColorImage, BinaryImage
+import matplotlib.pyplot as plt
 
 def threshold_binarize(img, tolerance):
     #3 color channels
@@ -73,6 +74,7 @@ def draw(img, center_masses, directions):
     cv2.waitKey(30)
     return img
 
+#instead of color base on size, all lego bricks are the same size
 def count_color_blobs(img):
     bin_span = 128
     bins = [0 for i in range((256/bin_span)**3)]
@@ -86,11 +88,17 @@ def count_color_blobs(img):
             bins[ind] += 1
     return sum(np.array(bins) > 250) - 1 #ignore black
 
+#this works as long as all legos are the same size
+#can be improved with polygonal crop
+def count_size_blobs(img):
+    num_white = sum(sum([row > 0 for row in img]))
+    return int(num_white/600)
+
 if __name__ == "__main__":
     #number of pixels apart to be singulated
     dist_tol = 5
     #background range for threshholding the image
-    color_tol = 45
+    color_tol = 60
 
     folder = "data/example_images/"
 
@@ -109,9 +117,12 @@ if __name__ == "__main__":
             cm = center_masses[i]
             direction = directions[i]
             mask = masks[i]/255
-            masked_color = np.stack([mask,mask,mask],axis=-1) * img
+
+            # masked_color = np.stack([mask,mask,mask],axis=-1) * img
             # cv2.imwrite(folder + "mask_" + filen + "_" + str(i) + ".png", masked_color)
-            num = count_color_blobs(masked_color)
+            # num = count_color_blobs(masked_color)
+
+            num = count_size_blobs(mask)
             results.append([cm, direction, mask, num])
         print("For image " + str(img_num) + " there were " + str(len(results)) +
             " clusters with " + str([r[3] for r in results]) + " objects respectively.")
