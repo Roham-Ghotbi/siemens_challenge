@@ -35,7 +35,8 @@ import sys
 
 from il_ros_hsr.p_pi.tpc.gripper import Lego_Gripper
 from tpc.perception.cluster_registration import run_connected_components, draw
-from tpc.perception.singulation import find_singulation
+from tpc.perception.singulation import find_singulation, display_singulation
+from perception import ColorImage
 from il_ros_hsr.p_pi.bed_making.table_top import TableTop
 
 import il_ros_hsr.p_pi.bed_making.config_bed as cfg
@@ -43,8 +44,8 @@ import il_ros_hsr.p_pi.bed_making.config_bed as cfg
 
 from il_ros_hsr.core.rgbd_to_map import RGBD2Map
 
-DEBUG = False
-SINGULATE = False
+DEBUG = True
+SINGULATE = True
 
 class BedMaker():
 
@@ -76,7 +77,6 @@ class BedMaker():
 
         self.cam = RGBD()
         self.com = COM()
-
 
         if not DEBUG:
             self.com.go_to_initial_state(self.whole_body)     
@@ -139,13 +139,16 @@ class BedMaker():
 
                 
                 if SINGULATE:
-                    start, end = find_singulation(c_img)
-                    self.singulate(start, end, c_img)
+
+                    start, end = find_singulation(ColorImage(c_img))
+                    display_singulation(start, end, ColorImage(c_img))
+                    self.singulate(start, end, c_img, d_img)
+                    self.com.go_to_initial_state(self.whole_body)
 
                 # IPython.embed()
                 for c_m, direction in zip(c_ms, dirs):
                     pose,rot = self.compute_grasp(c_m,direction,d_img)
-                    print pose, rot
+                    print "pose, rot:", pose, rot
                
 
                 grasp_name = self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=c_img)
@@ -191,18 +194,40 @@ class BedMaker():
 
         return [x,y,z],rot
 
-    def singulate(self, start, end, c_img):
-        start_z = d_img[start[0]-20:start[0]+20, start[1]-20:start[1]+20]
-        end_z = d_img[end[0]-20:end[0]+20, end[1]-20:end[1]+20]
+    def singulate(self, start, end, c_img, d_img):
+        # [355.9527559055119, 123.53543307086613, 977.26812500000005] 0.0
+        rot = np.pi/2 + np.arctan2(end[0] - start[0], end[1] - start[1])
 
-        rot = 0
-        start_pose_name = self.gripper.get_grasp_pose(start[0],start[1],start_z,rot,c_img=c_img)
-        end_pose_name = self.gripper.get_grasp_pose(end[0],end[1],end_z,rot,c_img=c_img)
-        
         self.gripper.close_gripper()
-        whole_body.move_end_effector_pose(geometry.pose(),start_pose_name)
-        whole_body.move_end_effector_pose(geometry.pose(),end_pose_name)
+        # self.go_to_point(start, rot, c_img, d_img)
+        # self.go_to_point(end, rot, c_img, d_img)
 
+        y, x = start
+        z_box = d_img[y-20:y+20, x-20:x+20]
+        z = self.gp.find_mean_depth(z_box)
+        start_pose_name = self.gripper.get_grasp_pose(x,y,z,rot,c_img=c_img)
+        
+        y, x = end
+        z_box = d_img[y-20:y+20, x-20:x+20]
+        z = self.gp.find_mean_depth(z_box)
+        end_pose_name = self.gripper.get_grasp_pose(x,y,z,rot,c_img=c_img)
+        
+        raw_input("Click enter to move to " + start_pose_name)
+        self.whole_body.move_end_effector_pose(geometry.pose(), start_pose_name)
+        raw_input("Click enter to move to " + end_pose_name)
+        self.whole_body.move_end_effector_pose(geometry.pose(), end_pose_name)
+
+        self.gripper.open_gripper()
+        
+        
+    def go_to_point(self, point, rot, c_img, d_img):
+        y, x = point
+        z_box = d_img[y-20:y+20, x-20:x+20]
+        z = self.gp.find_mean_depth(z_box)
+        print "singulation pose:", x,y,z
+        pose_name = self.gripper.get_grasp_pose(x,y,z,rot,c_img=c_img)
+        raw_input("Click enter to move to " + pose_name)
+        self.whole_body.move_end_effector_pose(geometry.pose(), pose_name)
 
     
     def position_head(self):

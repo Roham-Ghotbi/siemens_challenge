@@ -95,10 +95,8 @@ def get_border_goal(image):
 
     #Bricks and everything outside the tray
     binary_im_framed = brick_mask + focus_mask.inverse()
-    plt.imshow(binary_im_framed.data)
-    plt.show()
     goal_pixel = binary_im_framed.most_free_pixel()
-    return border, goal_pixel
+    return brick_mask, border, goal_pixel
 
 def get_direction(points, goal_pixel):
     """ Determines the direction which the robot should push 
@@ -129,7 +127,7 @@ def get_direction(points, goal_pixel):
     separation_dir = pca.components_[0]
     separation_dir = separation_dir / np.linalg.norm(separation_dir)
     max_distance = pca.explained_variance_[0]
-    distance = .25*max_distance
+    distance = .4*max_distance
 
     #optimal pushing location (most open space)
     push_center = np.mean(points, axis=0)
@@ -175,19 +173,21 @@ def find_singulation(image):
     Returns
     -------
     :obj:`numpy.ndarray`
-        1x2 vector pointing in the direction in which the 
-        robot should singulate
-    :obj: int
-        distance the robot should push to go through the 
-        entire pile
+        1x2 vector representing the start of the singulation
+    :obj: `numpy.ndarray`
+        1x2 vector representing the end of the singulation
     """
-    border, goal_pixel = get_border_goal(image)
+    brick_mask, border, goal_pixel = get_border_goal(image)
     direction, distance = get_direction(border, goal_pixel)
 
     mean = np.mean(border, axis=0)
-    low = mean - distance*direction
-    high = mean + distance*direction
+    # low = mean - distance*direction
+    # high = mean + distance*direction
+    low = brick_mask.closest_zero_pixel(mean, -1*direction)
+    high = brick_mask.closest_zero_pixel(mean, direction)
+    return low, high
 
+def display_singulation(low, high, image):
     ax = plt.axes()
     ax.arrow(
             low[1], 
@@ -199,9 +199,10 @@ def find_singulation(image):
         )
 
     plt.imshow(image.data)
-    plt.plot(goal_pixel[1], goal_pixel[0], 'bo')
+    # plt.plot(goal_pixel[1], goal_pixel[0], 'bo')
     plt.axis('off')
     plt.show()
+
 
 if __name__ == "__main__":
     files = [
