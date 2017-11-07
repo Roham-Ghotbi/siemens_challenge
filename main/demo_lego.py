@@ -34,9 +34,9 @@ import sys
 
 
 from il_ros_hsr.p_pi.tpc.gripper import Lego_Gripper
-from tpc.perception.cluster_registration import run_connected_components, draw
+from tpc.perception.cluster_registration import run_connected_components, draw, count_size_blobs
 from tpc.perception.singulation import find_singulation, display_singulation
-from perception import ColorImage
+from perception import ColorImage, BinaryImage
 from il_ros_hsr.p_pi.bed_making.table_top import TableTop
 
 import il_ros_hsr.p_pi.bed_making.config_bed as cfg
@@ -44,8 +44,12 @@ import il_ros_hsr.p_pi.bed_making.config_bed as cfg
 
 from il_ros_hsr.core.rgbd_to_map import RGBD2Map
 
-DEBUG = True
 SINGULATE = True
+
+#number of pixels apart to be singulated
+DIST_TOL = 5
+#background range for thresholding the image
+COLOR_TOL = 40
 
 class BedMaker():
 
@@ -122,55 +126,104 @@ class BedMaker():
 
         if not DEBUG:
             self.position_head()
+        b = time.time()
         while True:
 
             
 
-            time.sleep(2)
+            time.sleep(1) #making sure the robot is finished moving
 
+            a = time.time()
             c_img = self.cam.read_color_data()
             d_img = self.cam.read_depth_data()
-
-            
+            cv2.imwrite("debug_imgs/c_img.png", c_img)
+            print "time to get images", time.time() - a
+            print "\n new iteration"
             if(not c_img == None and not d_img == None):
   
-                c_ms, dirs, _ = run_connected_components(c_img)
-                img = draw(c_img,c_ms,dirs)
+                # c_ms, dirs, _ = run_connected_components(c_img)
+                # img = draw(c_img,c_ms,dirs)
 
                 
-                if SINGULATE:
+                # if SINGULATE:
 
-                    start, end = find_singulation(ColorImage(c_img))
-                    display_singulation(start, end, ColorImage(c_img))
-                    self.singulate(start, end, c_img, d_img)
-                    self.com.go_to_initial_state(self.whole_body)
+                #     start, end = find_singulation(ColorImage(c_img))
+                #     # display_singulation(start, end, ColorImage(c_img))
+                #     self.singulate(start, end, c_img, d_img)
+                #     self.com.go_to_initial_state(self.whole_body)
 
-                # IPython.embed()
-                for c_m, direction in zip(c_ms, dirs):
-                    pose,rot = self.compute_grasp(c_m,direction,d_img)
-                    print "pose, rot:", pose, rot
+                # # IPython.embed()
+                # for c_m, direction in zip(c_ms, dirs):
+                #     pose,rot = self.compute_grasp(c_m,direction,d_img)
+                #     print "pose, rot:", pose, rot
                
 
-                grasp_name = self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=c_img)
-                IPython.embed()
-                self.execute_grasp(grasp_name)
+                # grasp_name = self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=c_img)
+                # IPython.embed()
+                # self.execute_grasp(grasp_name)
                 
+                # self.whole_body.move_to_go()
+                # self.tt.move_to_pose(self.omni_base,'lower_start')
+                # time.sleep(1)
+                # self.whole_body.move_to_joint_positions({'head_tilt_joint':-0.8})
+                a = time.time()
+                center_masses, directions, masks = run_connected_components(c_img, DIST_TOL, COLOR_TOL)
+                print "Time to find masses:", time.time() - a
+                print "num masses", len(center_masses)
+                if len(center_masses) == 0:
+                    # print "aaaa"
+                    break
+
+                # print "a"
+                for i, m in enumerate(masks):
+                    cv2.imwrite("debug_imgs/" + str(i) + ".png", m)
+
+                # print "b"
+                
+                nums = [count_size_blobs(m/255) for m in masks]
+                print "num objects:", nums
+
+                found_grasp = False
+                grasps = []
+                for i in range(len(center_masses)):
+                    if nums[i] == 1:
+                        pose,rot = self.compute_grasp(center_masses[i],directions[i],d_img)
+                        grasps.append(self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=c_img))
+                        found_grasp = True
+
+                if found_grasp:
+                    for grasp in grasps:
+                        # raw_input("Click enter to execute grasp:" + grasp)
+                        print "grasping", grasp
+                        self.execute_grasp(grasp)
+                else:
+                    a = time.time()
+                    start, end = find_singulation(ColorImage(c_img), BinaryImage(masks[0].astype(np.uint8)))
+                    print "Time to find Singulate:", time.time() - a
+                    # display_singulation(start, end, ColorImage(c_img))
+                    self.singulate(start, end, c_img, d_img)
+
+                # self.tt.move_to_pose(self.omni_base,'lower_start')
+                print "Current Time:", time.time() - b
+                a = time.time()
                 self.whole_body.move_to_go()
-                self.tt.move_to_pose(self.omni_base,'lower_start')
-                time.sleep(1)
-                self.whole_body.move_to_joint_positions({'head_tilt_joint':-0.8})
+                self.position_head()
+
+
+
+
  
     
 
     def execute_grasp(self,grasp_name):
+        self.gripper.open_gripper()
 
-        
         self.whole_body.end_effector_frame = 'hand_palm_link'
         
         self.whole_body.move_end_effector_pose(geometry.pose(),grasp_name)
 
-
         self.gripper.close_gripper()
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),grasp_name)        
         
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),'head_down')
         
@@ -181,9 +234,9 @@ class BedMaker():
     def compute_grasp(self, c_m, direction, d_img):
 
         if direction: 
-            rot = 1.57
-        else: 
             rot = 0.0
+        else: 
+            rot = 1.57
 
         x = c_m[1]
         y = c_m[0]
@@ -205,6 +258,7 @@ class BedMaker():
         y, x = start
         z_box = d_img[y-20:y+20, x-20:x+20]
         z = self.gp.find_mean_depth(z_box)
+        # above_start_pose_name = self.gripper.get_grasp_pose(x,y,z,rot,c_img=c_img)
         start_pose_name = self.gripper.get_grasp_pose(x,y,z,rot,c_img=c_img)
         
         y, x = end
@@ -212,10 +266,15 @@ class BedMaker():
         z = self.gp.find_mean_depth(z_box)
         end_pose_name = self.gripper.get_grasp_pose(x,y,z,rot,c_img=c_img)
         
-        raw_input("Click enter to move to " + start_pose_name)
-        self.whole_body.move_end_effector_pose(geometry.pose(), start_pose_name)
-        raw_input("Click enter to move to " + end_pose_name)
-        self.whole_body.move_end_effector_pose(geometry.pose(), end_pose_name)
+        # raw_input("Click enter to move to " + above_start_pose_name)
+        # self.whole_body.move_end_effector_pose(geometry.pose(), start_pose_name)
+        # raw_input("Click enter to singulate from " + start_pose_name)
+        print "singulating", start_pose_name
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.05), start_pose_name)
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-.01), start_pose_name)
+        # raw_input("Click enter to singulate to " + end_pose_name)
+        print "singulating", end_pose_name
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-.01), end_pose_name)
 
         self.gripper.open_gripper()
         
@@ -241,7 +300,10 @@ class BedMaker():
 
 
 if __name__ == "__main__":
-   
+    if len(sys.argv) > 1:
+        DEBUG = True
+    else:
+        DEBUG = False
     
     cp = BedMaker()
 

@@ -31,11 +31,11 @@ def run_connected_components(img, dist_tol=5, color_tol=45):
     img = np.copy(img)
 
     #crop image (change to detect automatically)
-    lo_y, hi_y = 65, 165
-    lo_x, hi_x = 220, 470
+    lo_y, hi_y = 75, 145
+    lo_x, hi_x = 240, 445
     crop = [slice(lo_y, hi_y), slice(lo_x, hi_x)]
     img = img[crop[0], crop[1]]
-
+    cv2.imwrite("debug_imgs/crop.png", img)
     #threshhold the background and reduce noise
     img = threshold_binarize(img, color_tol)
     img = cv2.medianBlur(img, 3)
@@ -92,7 +92,7 @@ def count_color_blobs(img):
 #can be improved with polygonal crop
 def count_size_blobs(img):
     num_white = sum(sum([row > 0 for row in img]))
-    return int(num_white/600)
+    return int(num_white/450)
 
 if __name__ == "__main__":
     #number of pixels apart to be singulated

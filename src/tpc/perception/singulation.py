@@ -15,6 +15,12 @@ points = np.array([
         (194.83498759305209, 156.91935483870958), 
         (493.39578163771705, 159.46029776674931)
     ])
+points = np.array([
+        (150,150),
+        (215,40),
+        (540,40),
+        (600,155)
+    ])
 
 def get_focus_mask(shape):
     """ cuts out everything other than the stuff in the tray
@@ -63,7 +69,7 @@ def display_segments(image, segmented):
         plt.imshow(brick.data)
         plt.show()
 
-def get_border_goal(image):
+def get_border_goal(image, brick_mask):
     """ Splits the bricks in the image into two segments, and 
     returns the pixels that border the two segments, for the 
     hsr to push across (approximately), and the goal pixel, 
@@ -83,10 +89,10 @@ def get_border_goal(image):
         1x2 array of the goal pixel
     """
     focus_mask = get_focus_mask(image.data.shape[:2])
-    focused = image.mask_binary(focus_mask)
-    brick_mask = focused.foreground_mask(60)
+    # focused = image.mask_binary(focus_mask)
+    # brick_mask = focused.foreground_mask(60)
 
-    bricks = focused.mask_binary(brick_mask)
+    bricks = image.mask_binary(brick_mask)
     segmented = bricks.segment_kmeans(.1, 2)
     border = segmented.border_pixels()
 
@@ -96,7 +102,7 @@ def get_border_goal(image):
     #Bricks and everything outside the tray
     binary_im_framed = brick_mask + focus_mask.inverse()
     goal_pixel = binary_im_framed.most_free_pixel()
-    return brick_mask, border, goal_pixel
+    return border, goal_pixel
 
 def get_direction(points, goal_pixel):
     """ Determines the direction which the robot should push 
@@ -157,7 +163,7 @@ def get_direction(points, goal_pixel):
             push_dir = -push_dir
     return push_dir, distance
 
-def find_singulation(image):
+def find_singulation(image, brick_mask):
     """ Determines the direction which the robot should push 
     the pile to separate it the most by pushing along the 
     direction of the border pixels between the bricks while 
@@ -177,13 +183,13 @@ def find_singulation(image):
     :obj: `numpy.ndarray`
         1x2 vector representing the end of the singulation
     """
-    brick_mask, border, goal_pixel = get_border_goal(image)
+    border, goal_pixel = get_border_goal(image, brick_mask)
     direction, distance = get_direction(border, goal_pixel)
 
     mean = np.mean(border, axis=0)
     # low = mean - distance*direction
     # high = mean + distance*direction
-    low = brick_mask.closest_zero_pixel(mean, -1*direction)
+    low = brick_mask.closest_zero_pixel(mean, -1*direction, w=25)
     high = brick_mask.closest_zero_pixel(mean, direction)
     return low, high
 
@@ -197,10 +203,10 @@ def display_singulation(low, high, image):
             head_width=10, 
             head_length=10
         )
-
     plt.imshow(image.data)
     # plt.plot(goal_pixel[1], goal_pixel[0], 'bo')
     plt.axis('off')
+    # plt.savefig("debug_imgs/single.png")
     plt.show()
 
 
