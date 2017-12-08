@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 import IPython
 from skimage.draw import polygon
+from perception import BinaryImage
 
 def crop_img(img, viz=False):
     """ Crops image polygonally
@@ -10,12 +11,12 @@ def crop_img(img, viz=False):
     ----------
     img : :obj:`numpy.ndarray`
     viz : boolean
-        If true, displays the crop
+        if true, displays the crop
         polygon on the original image
     Returns
+    -------
     :obj:`BinaryImage`
         Image with only WA in white
-    -------
     """
     #threshold to WA and flip colors
     gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -49,11 +50,11 @@ def crop_img(img, viz=False):
     mean = np.mean(points, axis=0).astype("int32")
     points -= mean
     norms = np.apply_along_axis(np.linalg.norm, 1, points)
-    points = (points * (1 + blur_amt/1.2/norms.reshape(-1,1))).astype("int32")
+    points = (points * (1 + blur_amt/1.4/norms.reshape(-1,1))).astype("int32")
     points += mean
 
     #create mask
-    focus_mask = np.zeros(img.shape, dtype=np.uint8)
+    focus_mask = np.zeros(gray_img.shape, dtype=np.uint8)
     rr, cc = polygon(points[:,1], points[:,0])
     focus_mask[rr,cc] = 255
     if viz:
@@ -61,7 +62,8 @@ def crop_img(img, viz=False):
         cv2.drawContours(img, [ctrs], -1, [0, 255, 0], 3)
         cv2.imwrite("crop.png", img)
         cv2.imwrite("mask.png", focus_mask)
-    return focus_mask
+    return BinaryImage(focus_mask.astype("uint8"))
 
-img = cv2.imread("frame_40_1.png")
-mask = crop_img(img, viz=True)
+if __name__ == "__main__":
+    img = cv2.imread("frame_40_1.png")
+    mask = crop_img(img, viz=True)

@@ -34,8 +34,9 @@ import sys
 
 
 from il_ros_hsr.p_pi.tpc.gripper import Lego_Gripper
-from tpc.perception.cluster_registration import run_connected_components, draw, count_size_blobs
+from tpc.perception.cluster_registration import run_connected_components, visualize, has_multiple_objects
 from tpc.perception.singulation import find_singulation, display_singulation
+from tpc.perception.crop import crop_img
 from perception import ColorImage, BinaryImage
 from il_ros_hsr.p_pi.bed_making.table_top import TableTop
 
@@ -140,58 +141,30 @@ class BedMaker():
             print "time to get images", time.time() - a
             print "\n new iteration"
             if(not c_img == None and not d_img == None):
-  
-                # c_ms, dirs, _ = run_connected_components(c_img)
-                # img = draw(c_img,c_ms,dirs)
+                mask = crop_img(c_img)
+                c_img = ColorImage(c_img)
+                c_img = c_img.mask_binary(mask)
 
-                
-                # if SINGULATE:
-
-                #     start, end = find_singulation(ColorImage(c_img))
-                #     # display_singulation(start, end, ColorImage(c_img))
-                #     self.singulate(start, end, c_img, d_img)
-                #     self.com.go_to_initial_state(self.whole_body)
-
-                # # IPython.embed()
-                # for c_m, direction in zip(c_ms, dirs):
-                #     pose,rot = self.compute_grasp(c_m,direction,d_img)
-                #     print "pose, rot:", pose, rot
-               
-
-                # grasp_name = self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=c_img)
-                # IPython.embed()
-                # self.execute_grasp(grasp_name)
-                
-                # self.whole_body.move_to_go()
-                # self.tt.move_to_pose(self.omni_base,'lower_start')
-                # time.sleep(1)
-                # self.whole_body.move_to_joint_positions({'head_tilt_joint':-0.8})
                 a = time.time()
-                center_masses, directions, masks = run_connected_components(c_img, DIST_TOL, COLOR_TOL)
+                center_masses, directions, masks = run_connected_components(c_img, DIST_TOL, COLOR_TOL, viz=False)
                 print "Time to find masses:", time.time() - a
                 print "num masses", len(center_masses)
                 if len(center_masses) == 0:
-                    # print "aaaa"
                     break
 
-                # print "a"
-                for i, m in enumerate(masks):
-                    cv2.imwrite("debug_imgs/" + str(i) + ".png", m)
+                # for i, m in enumerate(masks):
+                #     cv2.imwrite("debug_imgs/" + str(i) + ".png", m)
 
-                # print "b"
-                
-                nums = [count_size_blobs(m/255) for m in masks]
+                nums = [has_multiple_objects(m) for m in masks]
                 print "num objects:", nums
 
-                found_grasp = False
                 grasps = []
                 for i in range(len(center_masses)):
                     if nums[i] == 1:
                         pose,rot = self.compute_grasp(center_masses[i],directions[i],d_img)
                         grasps.append(self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=c_img))
-                        found_grasp = True
 
-                if found_grasp:
+                if len(grasps) > 0:
                     for grasp in grasps:
                         # raw_input("Click enter to execute grasp:" + grasp)
                         print "grasping", grasp
@@ -232,11 +205,11 @@ class BedMaker():
 
 
     def compute_grasp(self, c_m, direction, d_img):
-
-        if direction: 
-            rot = 0.0
-        else: 
-            rot = 1.57
+        rot = np.arctan(direction[1]/direction[0])
+        # if direction: 
+        #     rot = 0.0
+        # else: 
+        #     rot = 1.57
 
         x = c_m[1]
         y = c_m[0]

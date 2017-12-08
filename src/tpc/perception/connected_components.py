@@ -6,10 +6,20 @@ from scipy.misc import imresize
 from union import UnionFind
 from skimage.measure import block_reduce
 from groups import Group
+from perception import ColorImage, BinaryImage
 import IPython
 
-"""returns a list of groups based just on adjacency (no tolerance)"""
 def generate_groups(img):
+    """ Finds groups using adjacency
+    (dist_tol = 0)
+    Parameters
+    ----------
+    img :obj:`numpy.ndarray`
+        binary foreground image
+    Returns
+    -------
+    :obj:list of `Group`
+    """
     #give each component a different integer label in the output matrix
     labeled_img = np.zeros(img.shape)
 
@@ -36,10 +46,20 @@ def generate_groups(img):
 
     return groups
 
-"""
-merges until all groups have at least 'tol' distance between them
-"""
-def merge_groups(groups, tol):
+def merge_groups(groups, dist_tol):
+    """ Merges untill all groups have at least
+    `dist_tol` distance between them
+    Parameters
+    ----------
+    groups :obj:list of `Group`
+        groups found using adjacency
+    dist_tol : int
+        minimum euclidean distance
+        to be in same cluster
+    Returns
+    -------
+    :obj:list of `Group`
+    """
     #give groups initial labels = indexes
     for i in range(len(groups)):
         groups[i].updateLabel(i)
@@ -55,7 +75,7 @@ def merge_groups(groups, tol):
 
             #short circuit if already connected (minimize nearest neighbor calls)
             if not uf.find(curr_group.label, other_group.label):
-                if Group.nearby(curr_group, other_group, tol):
+                if Group.nearby(curr_group, other_group, dist_tol):
                     uf.union(curr_group.label, other_group.label)
 
     merged_groups = []
@@ -84,27 +104,41 @@ def get_smallest(groups, n):
     groups.sort()
     return groups[:min(n, len(groups))]
 
-"""
-input `img` is binarized between fg and bg
-two groups are singulated if they are more than `tol` apart
-returns centroid and orientation of each group
-"""
-def get_cluster_info(img, tol):
-    orig_shape = img.shape
-    #halve image size to increase speed
+def get_cluster_info(img, dist_tol):
+    """ Generates mask for
+    each cluster of objects
+    Parameters
+    ----------
+    img :obj:`BinaryImage`
+        mask of objects in working area
+    dist_tol : int
+        minimum euclidean distance
+        to be in same cluster
+    Returns
+    -------
+    :obj:tuple of 
+        :obj:list of `numpy.ndarray`
+            cluster center of masses
+        :obj:list of `numpy.ndarray`
+            cluster grasp angles
+        :obj:list of `BinaryImage`
+            cluster masks
+    """
     scale_factor = 2
-    area_cutoff = 80
-    img = block_reduce(img, block_size = (scale_factor, scale_factor), func = np.mean)
-    tol = tol/scale_factor
+    min_group_area = 80
+
+    img_data = img.data
+    orig_shape = img_data.shape
+    img_data = block_reduce(img_data, block_size = (scale_factor, scale_factor), func = np.mean)
+    dist_tol = dist_tol/scale_factor
 
     #find groups of adjacent foreground pixels
-    groups = generate_groups(img)
-    groups = [g for g in groups if g.area >= area_cutoff/scale_factor]
-    groups = merge_groups(groups, tol)
+    groups = generate_groups(img_data)
+    groups = [g for g in groups if g.area >= min_group_area/scale_factor]
+    groups = merge_groups(groups, dist_tol)
 
     center_masses = [map(lambda x: x * scale_factor, g.center_mass) for g in groups]
     directions = [g.orientation() for g in groups]
-    masks = [imresize(g.get_mask(len(img),len(img[0])),orig_shape)  for g in groups]
-    # coords = [map(lambda x: x * scale_factor, g.get_bounds()) for g in groups]
-    # return coords
+    masks = [BinaryImage(imresize(g.get_mask(img_data.shape),orig_shape)) for g in groups]
+
     return center_masses, directions, masks
