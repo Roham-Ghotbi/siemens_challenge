@@ -16,8 +16,6 @@ class Group:
 
         self.low_coords = [-1 for d in range(self.ndim)]
         self.high_coords = [-1 for d in range(self.ndim)]
-        #stored as moving average
-        self.center_mass = [0 for d in range(self.ndim)]
 
     @staticmethod
     def checkDim(p1, p2):
@@ -72,15 +70,17 @@ class Group:
         # return width > height
         pca = PCA(n_components=2)
         pca.fit(self.points)
-        axis = pca.components_[1]
+        # axis = pca.components_[1]
+        #perpendicular to 1st component works better than second component
+        axis = pca.components_[0]
+        axis = [axis[1], -1*axis[0]]
         return axis/np.linalg.norm(axis)
+
     def add(self, p):
         """
         Insert a new point into the group
         """
         n = len(self.points) * 1.0
-        self.center_mass = [n/(n+1.0) * self.center_mass[dim]
-            + 1.0/(n+1.0) * p[dim] for dim in range(self.ndim)]
         self.points.append(p)
         self.area += 1
 
@@ -100,8 +100,6 @@ class Group:
             self.high_coords[dim] = max(self.high_coords[dim], other.high_coords[dim])
         self.area = self.area + other.area
         n, m = len(self.points), len(other.points)
-        self.center_mass = [n/(n+m) * self.center_mass[dim]
-            + m/(n+m) * other.center_mass[dim] for dim in range(self.ndim)]
         self.points = self.points + other.points
 
     def get_bounds(self):
@@ -122,3 +120,6 @@ class Group:
         for p in self.points:
             img[p[0]][p[1]] = 1
         return img
+
+    def center_mass(self):
+        return np.mean(self.points, axis=0)

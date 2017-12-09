@@ -5,7 +5,7 @@ from connected_components import get_cluster_info
 from perception import ColorImage, BinaryImage
 import matplotlib.pyplot as plt
 
-def run_connected_components(img, dist_tol=5, color_tol=45, viz=False):
+def run_connected_components(img, dist_tol=5, color_tol=45, size_tol=300, viz=False):
     """ Generates mask for
     each cluster of objects
     Parameters
@@ -19,6 +19,8 @@ def run_connected_components(img, dist_tol=5, color_tol=45, viz=False):
     color_tol : int
         minimum color distance
         to not threshold out 
+    size_tol : int
+        minimum cluster size
     viz : boolean
         if true, displays proposed grasps
     Returns
@@ -37,7 +39,7 @@ def run_connected_components(img, dist_tol=5, color_tol=45, viz=False):
         cv2.imwrite("mask.png", img.data)
     # img = cv2.medianBlur(img, 3)
 
-    center_masses, directions, masks = get_cluster_info(fg, dist_tol)
+    center_masses, directions, masks = get_cluster_info(fg, dist_tol, size_tol)
     if viz:
         cv2.imwrite("grasps.png", visualize(img, center_masses, directions))
 
@@ -87,11 +89,10 @@ def has_multiple_objects(img, algo="size"):
     :boolean
         True if multiple objects, else False
     """
-    ngroups = 0
     if algo == "size":
         #relies on objects being the same size
-        npixels = len(img.nonzero_pixels())
-        nobjs = int(npixels/650)
+        n_pixels = len(img.nonzero_pixels())
+        n_objs = int(n_pixels/550)
     elif algo == "color":
         bin_span = 128
         bins = [0 for i in range((256/bin_span)**3)]
@@ -104,9 +105,9 @@ def has_multiple_objects(img, algo="size"):
                 #calculate unique index for every combination of bins
                 ind = int(b * (256/bin_span)**2 + g * (256/bin_span) + r)
                 bins[ind] += 1
-        nobjs = sum(np.array(bins) > 250) - 1 #ignore black
+        n_objs = sum(np.array(bins) > 250) - 1 #ignore black
     else:
         raise ValueError("Unsupported algorithm specified. Use 'size' or 'color'")
-    if nobjs == 0:
-        raise ValueError("Image should have at least 1 object")
-    return nobjs > 1
+    if n_objs == 0:
+        raise ValueError("Cluster should have at least 1 object")
+    return n_objs > 1

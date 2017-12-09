@@ -8,36 +8,8 @@ import sys
 from perception import ColorImage, BinaryImage
 import numpy as np
 from sklearn.decomposition import PCA
-
-points = np.array([
-        (462.90446650124068, 69.256823821339879), 
-        (229.13771712158811, 71.797766749379605), 
-        (194.83498759305209, 156.91935483870958), 
-        (493.39578163771705, 159.46029776674931)
-    ])
-points = np.array([
-        (150,150),
-        (215,40),
-        (540,40),
-        (600,155)
-    ])
-
-def get_focus_mask(shape):
-    """ cuts out everything other than the stuff in the tray
-
-    Parameters
-    ----------
-    image : :obj:`ColorImage`
-
-    Returns
-    -------
-    :obj:`BinaryImage`
-        mask for the tray
-    """
-    focus_mask = np.zeros(shape, dtype=np.uint8)
-    rr, cc = polygon(points[:,1], points[:,0])
-    focus_mask[rr,cc] = 255
-    return BinaryImage(focus_mask)
+import cv2
+import IPython
 
 def display_border(image, border):
     """ helper to display the border between the segments
@@ -69,7 +41,7 @@ def display_segments(image, segmented):
         plt.imshow(brick.data)
         plt.show()
 
-def get_border_goal(image, brick_mask):
+def get_border_goal(img, focus_mask, brick_mask):
     """ Splits the bricks in the image into two segments, and 
     returns the pixels that border the two segments, for the 
     hsr to push across (approximately), and the goal pixel, 
@@ -78,9 +50,12 @@ def get_border_goal(image, brick_mask):
 
     Parameters
     ----------
-    image : :obj:`ColorImage`
-        image to display
-    
+    img :obj:`ColorImage`
+        original image
+    focus_mask :obj:`BinaryImage`
+        crop of workspace
+    brick_mask :obj:`BinaryImage`
+        crop of object cluster
     Returns
     -------
     :obj:`numpy.ndarray`
@@ -88,11 +63,7 @@ def get_border_goal(image, brick_mask):
     :obj:`numpy.ndarray`
         1x2 array of the goal pixel
     """
-    focus_mask = get_focus_mask(image.data.shape[:2])
-    # focused = image.mask_binary(focus_mask)
-    # brick_mask = focused.foreground_mask(60)
-
-    bricks = image.mask_binary(brick_mask)
+    bricks = img.mask_binary(brick_mask)
     segmented = bricks.segment_kmeans(.1, 2)
     border = segmented.border_pixels()
 
@@ -163,7 +134,7 @@ def get_direction(points, goal_pixel):
             push_dir = -push_dir
     return push_dir, distance
 
-def find_singulation(image, brick_mask):
+def find_singulation(img, focus_mask, brick_mask):
     """ Determines the direction which the robot should push 
     the pile to separate it the most by pushing along the 
     direction of the border pixels between the bricks while 
@@ -171,10 +142,12 @@ def find_singulation(image, brick_mask):
 
     Parameters
     ----------
-    points : :obj:`numpy.ndarray`
-        nx2 array of n border pixels
-    goal_pixel : :obj:`numpy.ndarray`
-        1x2 array of the goal pixel
+    img :obj:`ColorImage`
+        original image
+    focus_mask :obj:`BinaryImage`
+        crop of workspace
+    brick_mask :obj:`BinaryImage`
+        crop of object cluster
     
     Returns
     -------
@@ -183,17 +156,29 @@ def find_singulation(image, brick_mask):
     :obj: `numpy.ndarray`
         1x2 vector representing the end of the singulation
     """
-    border, goal_pixel = get_border_goal(image, brick_mask)
+    #top of focus mask is out of range, so shouldn't be considered free space
+    middle_mask_pix_y = int(np.mean(focus_mask.nonzero_pixels(), axis=0)[0])
+    shape = focus_mask.shape 
+    ycoords = [i for i in range(middle_mask_pix_y, int(shape[0]))]
+    xcoords = [j for j in range(0, int(shape[1]))]
+    valid_pix = []
+    for x in xcoords:
+        for y in ycoords:
+            valid_pix.append([y,x])
+    focus_mask = focus_mask.mask_by_ind(np.array(valid_pix))
+    # cv2.imwrite("smallmask.png", focus_mask.data)
+
+    border, goal_pixel = get_border_goal(img, focus_mask, brick_mask)
     direction, distance = get_direction(border, goal_pixel)
 
     mean = np.mean(border, axis=0)
-    # low = mean - distance*direction
-    # high = mean + distance*direction
+
     low = brick_mask.closest_zero_pixel(mean, -1*direction, w=25)
     high = brick_mask.closest_zero_pixel(mean, direction)
     return low, high
 
 def display_singulation(low, high, image):
+    plt.figure()
     ax = plt.axes()
     ax.arrow(
             low[1], 
@@ -207,7 +192,8 @@ def display_singulation(low, high, image):
     # plt.plot(goal_pixel[1], goal_pixel[0], 'bo')
     plt.axis('off')
     # plt.savefig("debug_imgs/single.png")
-    plt.show()
+    # plt.show()
+    plt.savefig("singulate.png")
 
 
 if __name__ == "__main__":

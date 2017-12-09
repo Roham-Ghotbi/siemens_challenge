@@ -104,7 +104,7 @@ def get_smallest(groups, n):
     groups.sort()
     return groups[:min(n, len(groups))]
 
-def get_cluster_info(img, dist_tol):
+def get_cluster_info(img, dist_tol, size_tol):
     """ Generates mask for
     each cluster of objects
     Parameters
@@ -114,6 +114,8 @@ def get_cluster_info(img, dist_tol):
     dist_tol : int
         minimum euclidean distance
         to be in same cluster
+    size_tol : int
+        minimum cluster size
     Returns
     -------
     :obj:tuple of 
@@ -125,7 +127,6 @@ def get_cluster_info(img, dist_tol):
             cluster masks
     """
     scale_factor = 2
-    min_group_area = 80
 
     img_data = img.data
     orig_shape = img_data.shape
@@ -134,11 +135,10 @@ def get_cluster_info(img, dist_tol):
 
     #find groups of adjacent foreground pixels
     groups = generate_groups(img_data)
-    groups = [g for g in groups if g.area >= min_group_area/scale_factor]
+    groups = [g for g in groups if g.area >= size_tol/scale_factor]
     groups = merge_groups(groups, dist_tol)
 
-    center_masses = [map(lambda x: x * scale_factor, g.center_mass) for g in groups]
+    center_masses = [map(lambda x: x * scale_factor, g.center_mass()) for g in groups]
     directions = [g.orientation() for g in groups]
     masks = [BinaryImage(imresize(g.get_mask(img_data.shape),orig_shape)) for g in groups]
-
     return center_masses, directions, masks

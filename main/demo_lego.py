@@ -47,10 +47,12 @@ from il_ros_hsr.core.rgbd_to_map import RGBD2Map
 
 SINGULATE = True
 
-#number of pixels apart to be singulated
-DIST_TOL = 5
-#background range for thresholding the image
-COLOR_TOL = 40
+DIST_TOL = 5 #number of pixels apart to be singulated
+
+COLOR_TOL = 40 #background range for thresholding the image
+
+SIZE_TOL = 300 #number of pixels necssary for a cluster
+
 
 class BedMaker():
 
@@ -129,9 +131,6 @@ class BedMaker():
             self.position_head()
         b = time.time()
         while True:
-
-            
-
             time.sleep(1) #making sure the robot is finished moving
 
             a = time.time()
@@ -143,10 +142,10 @@ class BedMaker():
             if(not c_img == None and not d_img == None):
                 mask = crop_img(c_img)
                 c_img = ColorImage(c_img)
-                c_img = c_img.mask_binary(mask)
+                workspace_img = c_img.mask_binary(mask)
 
                 a = time.time()
-                center_masses, directions, masks = run_connected_components(c_img, DIST_TOL, COLOR_TOL, viz=False)
+                center_masses, directions, masks = run_connected_components(workspace_img, DIST_TOL, COLOR_TOL, SIZE_TOL, viz=True)
                 print "Time to find masses:", time.time() - a
                 print "num masses", len(center_masses)
                 if len(center_masses) == 0:
@@ -154,39 +153,39 @@ class BedMaker():
 
                 # for i, m in enumerate(masks):
                 #     cv2.imwrite("debug_imgs/" + str(i) + ".png", m)
+                # nums = [len(k.nonzero_pixels()) for k in masks]
 
-                nums = [has_multiple_objects(m) for m in masks]
-                print "num objects:", nums
+                has_multiple = [has_multiple_objects(m) for m in masks]
+                print "has multiple objects?:", has_multiple
 
                 grasps = []
                 for i in range(len(center_masses)):
-                    if nums[i] == 1:
+                    if not has_multiple[i]:
                         pose,rot = self.compute_grasp(center_masses[i],directions[i],d_img)
-                        grasps.append(self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=c_img))
+                        grasps.append(self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=workspace_img.data))
 
                 if len(grasps) > 0:
+                    print "running grasps"
+                    IPython.embed()     
                     for grasp in grasps:
                         # raw_input("Click enter to execute grasp:" + grasp)
                         print "grasping", grasp
                         self.execute_grasp(grasp)
                 else:
+                    print("singulating")
                     a = time.time()
-                    start, end = find_singulation(ColorImage(c_img), BinaryImage(masks[0].astype(np.uint8)))
-                    print "Time to find Singulate:", time.time() - a
-                    # display_singulation(start, end, ColorImage(c_img))
-                    self.singulate(start, end, c_img, d_img)
 
+                    start, end = find_singulation(c_img, mask, masks[0])
+                    print "Time to find Singulate:", time.time() - a
+                    display_singulation(start, end, workspace_img)
+                    IPython.embed()
+                    self.singulate(start, end, c_img, d_img)
+                IPython.embed()
                 # self.tt.move_to_pose(self.omni_base,'lower_start')
                 print "Current Time:", time.time() - b
-                a = time.time()
+
                 self.whole_body.move_to_go()
                 self.position_head()
-
-
-
-
- 
-    
 
     def execute_grasp(self,grasp_name):
         self.gripper.open_gripper()
@@ -205,14 +204,25 @@ class BedMaker():
 
 
     def compute_grasp(self, c_m, direction, d_img):
-        rot = np.arctan(direction[1]/direction[0])
+        #convert from image to world (flip x)
+        dx = direction[1]
+        dy = direction[0]
+        dx *= -1
+        #standardize to 1st/2nd quadrants
+        if dy < 0:
+            dx *= -1
+            dy *= -1
+        rot = np.arctan2(dy, dx)
+        #convert to robot view (counterclockwise)
+        rot = 3.14 - rot
+        # IPython.embed()
         # if direction: 
         #     rot = 0.0
         # else: 
         #     rot = 1.57
 
-        x = c_m[1]
-        y = c_m[0]
+        x = int(c_m[1])
+        y = int(c_m[0])
 
         z_box = d_img[y-20:y+20,x-20:x+20]
 
@@ -232,12 +242,12 @@ class BedMaker():
         z_box = d_img[y-20:y+20, x-20:x+20]
         z = self.gp.find_mean_depth(z_box)
         # above_start_pose_name = self.gripper.get_grasp_pose(x,y,z,rot,c_img=c_img)
-        start_pose_name = self.gripper.get_grasp_pose(x,y,z,rot,c_img=c_img)
+        start_pose_name = self.gripper.get_grasp_pose(x,y,z,rot,c_img=c_img.data)
         
         y, x = end
         z_box = d_img[y-20:y+20, x-20:x+20]
         z = self.gp.find_mean_depth(z_box)
-        end_pose_name = self.gripper.get_grasp_pose(x,y,z,rot,c_img=c_img)
+        end_pose_name = self.gripper.get_grasp_pose(x,y,z,rot,c_img=c_img.data)
         
         # raw_input("Click enter to move to " + above_start_pose_name)
         # self.whole_body.move_end_effector_pose(geometry.pose(), start_pose_name)
