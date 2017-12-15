@@ -8,14 +8,18 @@ class Group:
     used to group pixels belonging to the same object clusters
     author: Chris Powers
     """
-    def __init__(self, label):
-        self.points = []
+    def __init__(self, label, points = None):
         self.ndim = 2
-        self.area = 0
+        if points == None:
+            self.points = []
+            self.low_coords = [-1 for d in range(self.ndim)]
+            self.high_coords = [-1 for d in range(self.ndim)]
+        else:
+            self.points = points
+            self.low_coords = [min(self.points, key=lambda x:x[d])[d] for d in range(self.ndim)]
+            self.high_coords = [max(self.points, key=lambda x:x[d])[d] for d in range(self.ndim)]
+        self.area = len(self.points)
         self.label = label
-
-        self.low_coords = [-1 for d in range(self.ndim)]
-        self.high_coords = [-1 for d in range(self.ndim)]
 
     @staticmethod
     def checkDim(p1, p2):
