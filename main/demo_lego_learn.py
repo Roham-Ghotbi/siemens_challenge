@@ -123,6 +123,48 @@ class BedMaker():
 
         return
 
+    def bbox_to_mask(self, bbox, c_img):
+        loX, loY, hiX, hiY = bbox 
+        bin_img = np.zeros(c_img.shape[0:2])
+        #don't include workspace points
+        for x in range(loX, hiX):
+            for y in range(loY, hiY):
+                r, g, b = c_img[y][x]
+                if r < 240 or g < 240 or b < 240:
+                    bin_img[y][x] = 255
+
+        return BinaryImage(bin_img.astype(np.uint8))
+    def bbox_to_grasp(self, bbox, c_img, d_img):
+        '''
+        Computes center of mass and direction of grasp using bbox
+        '''
+        loX, loY, hiX, hiY = bbox 
+
+        #don't include workspace points
+        dpoints = []
+        for x in range(loX, hiX):
+            for y in range(loY, hiY):
+                r, g, b = c_img[y][x]
+                if r < 240 or g < 240 or b < 240:
+                    dpoints.append([y, x])
+
+        g = Group(1, points=dpoints)
+        direction = g.orientation()
+        center_mass = g.center_mass()
+
+        #use x from color image
+        x_center_points = [d for d in dpoints if abs(d[1] - center_mass[1]) < 4]
+
+        #compute y using depth image
+        dvals = [d_img[d[0], d[1]] for d in x_center_points]
+        depth_vals = list(np.copy(dvals))
+        depth_vals.sort()
+        #use median to ignore depth noise
+        middle_depth = depth_vals[len(depth_vals)/2]
+        closest_ind = (np.abs(dvals - middle_depth)).argmin()
+        closest_point = x_center_points[closest_ind]
+
+        return closest_point, direction
 
     def lego_demo(self):
 
@@ -153,33 +195,29 @@ class BedMaker():
                     elif classname == "suction":
                         suction_boxes.append(bbox)
                     elif classname == "singulate":
-                        singulate_boxes.append(bboxx)
+                        singulate_boxes.append(bbox)
 
                 main_mask = crop_img(c_img)
                 col_img = ColorImage(c_img)
                 workspace_img = col_img.mask_binary(main_mask)
 
                 grasps = []
+                viz_info = []
                 for i in range(len(grasp_boxes)):
-                    #need to deal with non-rectangular objects in future
                     bbox = grasp_boxes[i]
-                    loX, loY, hiX, hiY = bbox 
-                    dpoints = []
-                    for x in range(loX, hiX):
-                        for y in range(loY, hiY):
-                            dpoints.append([y, x])
-                    g = Group(1, points=dpoints)
-                    center_mass = g.center_mass()
-                    direction = g.orientation()
+                    center_mass, direction = self.bbox_to_grasp(bbox, c_img, d_img)
+
+                    viz_info.append([center_mass, direction])
                     pose,rot = self.compute_grasp(center_mass,direction,d_img)
-                    IPython.embed()
                     grasps.append(self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=workspace_img.data))
+
 
                 suctions = []
                 for i in range(len(suction_boxes)):
                     suctions.append("compute_suction?")
 
                 if len(grasps) > 0 or len(suctions) > 0:
+                    cv2.imwrite("grasps.png", visualize(workspace_img, [v[0] for v in viz_info], [v[1] for v in viz_info]))
                     print "running grasps"
                     IPython.embed()
                     for grasp in grasps:
@@ -191,10 +229,11 @@ class BedMaker():
                         #execute suction
                 elif len(singulate_boxes) > 0:
                     print("singulating")
-                    IPython.embed()
-                    mask = singulation_boxes[0]
-                    start, end = find_singulation(c_img, main_mask, mask)
+                    bbox = singulate_boxes[0]
+                    obj_mask = self.bbox_to_mask(bbox, c_img)
+                    start, end = find_singulation(col_img, main_mask, obj_mask)
                     display_singulation(start, end, workspace_img)
+                    IPython.embed()
                     self.singulate(start, end, c_img, d_img)
                 else:
                     print("cleared workspace")
