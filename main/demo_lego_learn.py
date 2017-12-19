@@ -43,6 +43,7 @@ from il_ros_hsr.p_pi.bed_making.table_top import TableTop
 
 import il_ros_hsr.p_pi.bed_making.config_bed as cfg
 
+from fast_grasp_detect.core.data_saver import data_saver
 
 from il_ros_hsr.core.rgbd_to_map import RGBD2Map
 
@@ -100,6 +101,8 @@ class BedMaker():
         self.br = tf.TransformBroadcaster()
         self.tl = TransformListener()
 
+        self.ds = data_saver('tpc_rollouts')
+
 
 
         self.gp = GraspPlanner()
@@ -134,6 +137,7 @@ class BedMaker():
                     bin_img[y][x] = 255
 
         return BinaryImage(bin_img.astype(np.uint8))
+
     def bbox_to_grasp(self, bbox, c_img, d_img):
         '''
         Computes center of mass and direction of grasp using bbox
@@ -173,6 +177,7 @@ class BedMaker():
 
         if not DEBUG:
             self.position_head()
+
         while True:
             time.sleep(1) #making sure the robot is finished moving
             c_img = self.cam.read_color_data()
@@ -183,20 +188,28 @@ class BedMaker():
             if(not c_img == None and not d_img == None):
                 #label image
                 data = self.wl.label_image(c_img)
+                c_img = self.cam.read_color_data()
+                
+
                 grasp_boxes = []
                 suction_boxes = []
                 singulate_boxes = []
+
+
                 for i in range(data['num_labels']):
                     bbox = data['objects'][i]['box']
                     classnum = data['objects'][i]['class']
-                    classname = ['grasp', 'singulate', 'suction'][classnum]
+                    classname = ['grasp', 'singulate', 'suction', 'quit'][classnum]
                     if classname == "grasp":
                         grasp_boxes.append(bbox)
                     elif classname == "suction":
                         suction_boxes.append(bbox)
                     elif classname == "singulate":
                         singulate_boxes.append(bbox)
-
+                    elif classname == "quit":
+                        self.ds.save_rollout()
+                        self.move_to_home()
+                self.ds.append_data_to_rollout(c_img,data)
                 main_mask = crop_img(c_img)
                 col_img = ColorImage(c_img)
                 workspace_img = col_img.mask_binary(main_mask)
@@ -219,7 +232,7 @@ class BedMaker():
                 if len(grasps) > 0 or len(suctions) > 0:
                     cv2.imwrite("grasps.png", visualize(workspace_img, [v[0] for v in viz_info], [v[1] for v in viz_info]))
                     print "running grasps"
-                    IPython.embed()
+                  
                     for grasp in grasps:
                         print "grasping", grasp
                         self.execute_grasp(grasp)
@@ -233,12 +246,11 @@ class BedMaker():
                     obj_mask = self.bbox_to_mask(bbox, c_img)
                     start, end = find_singulation(col_img, main_mask, obj_mask)
                     display_singulation(start, end, workspace_img)
-                    IPython.embed()
+                    
                     self.singulate(start, end, c_img, d_img)
                 else:
                     print("cleared workspace")
-                    break
-                IPython.embed()
+                    
                 self.whole_body.move_to_go()
                 self.position_head()
 
@@ -270,11 +282,7 @@ class BedMaker():
         rot = np.arctan2(dy, dx)
         #convert to robot view (counterclockwise)
         rot = 3.14 - rot
-        # IPython.embed()
-        # if direction: 
-        #     rot = 0.0
-        # else: 
-        #     rot = 1.57
+
 
         x = int(c_m[1])
         y = int(c_m[0])
@@ -332,8 +340,10 @@ class BedMaker():
         self.tt.move_to_pose(self.omni_base,'lower_start')
         self.whole_body.move_to_joint_positions({'head_tilt_joint':-0.8})
 
-        
+    def move_to_home(self):
 
+        self.tt.move_to_pose(self.omni_base,'lower_mid')
+        sys.exit()
 
 
 
@@ -345,5 +355,5 @@ if __name__ == "__main__":
     
     cp = BedMaker()
 
-    # cp.bed_make()
+    
     cp.lego_demo()

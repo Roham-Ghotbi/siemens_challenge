@@ -289,6 +289,7 @@ if __name__ == "__main__":
         DEBUG = False
     
     cp = BedMaker()
+    IPython.embed()
 
     # cp.bed_make()
     cp.lego_demo()
