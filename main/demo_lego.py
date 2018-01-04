@@ -25,34 +25,24 @@ from tf import TransformListener
 import tf
 import rospy
 
-from il_ros_hsr.core.grasp_planner import GraspPlanner
 from il_ros_hsr.core.crane_gripper import Crane_Gripper
+from il_ros_hsr.core.grasp_planner import GraspPlanner
 
 from il_ros_hsr.p_pi.bed_making.com import Bed_COM as COM
 import sys
-
 
 
 from il_ros_hsr.p_pi.tpc.gripper import Lego_Gripper
 from tpc.perception.cluster_registration import run_connected_components, visualize, has_multiple_objects
 from tpc.perception.singulation import find_singulation, display_singulation
 from tpc.perception.crop import crop_img
+from tpc.manipulation.primitives import GraspManipulator
 from perception import ColorImage, BinaryImage
 from il_ros_hsr.p_pi.bed_making.table_top import TableTop
 
-import il_ros_hsr.p_pi.bed_making.config_bed as cfg
-
+import tpc.config.config_tpc as cfg
 
 from il_ros_hsr.core.rgbd_to_map import RGBD2Map
-
-SINGULATE = True
-
-DIST_TOL = 5 #number of pixels apart to be singulated
-
-COLOR_TOL = 40 #background range for thresholding the image
-
-SIZE_TOL = 300 #number of pixels necssary for a cluster
-
 
 class BedMaker():
 
@@ -62,14 +52,14 @@ class BedMaker():
 
         Parameters
         ----------
-        yumi : An instianted yumi robot 
+        yumi : An instianted yumi robot
         com : The common class for the robot
         cam : An open bincam class
 
-        debug : bool 
+        debug : bool
 
-            A bool to indicate whether or not to display a training set point for 
-            debuging. 
+            A bool to indicate whether or not to display a training set point for
+            debuging.
 
         '''
 
@@ -79,39 +69,33 @@ class BedMaker():
         self.omni_base = self.robot.get('omni_base')
         self.whole_body = self.robot.get('whole_body')
 
-        
+
         self.side = 'BOTTOM'
 
         self.cam = RGBD()
         self.com = COM()
 
         if not DEBUG:
-            self.com.go_to_initial_state(self.whole_body)     
-            
+            self.com.go_to_initial_state(self.whole_body)
+
             self.tt = TableTop()
             self.tt.find_table(self.robot)
-        
-    
+
         self.grasp_count = 0
-      
 
         self.br = tf.TransformBroadcaster()
         self.tl = TransformListener()
 
-
-
         self.gp = GraspPlanner()
+        self.gripper = Crane_Gripper(self.gp, cam, options, robot.get('gripper'))
 
-        self.gripper = Crane_Gripper(self.gp,self.cam,self.com.Options,self.robot.get('gripper'))
+        self.gm = GraspManipulator(self.gp, self.gripper, self.whole_body, self.omni_base, self.tt)
 
         print "after thread"
 
-       
-
-
     def find_mean_depth(self,d_img):
         '''
-        Evaluates the current policy and then executes the motion 
+        Evaluates the current policy and then executes the motion
         specified in the the common class
         '''
 
@@ -121,14 +105,13 @@ class BedMaker():
 
         return
 
-
     def lego_demo(self):
 
         self.rollout_data = []
         self.get_new_grasp = True
 
         if not DEBUG:
-            self.position_head()
+            self.gm.position_head()
         b = time.time()
         while True:
             time.sleep(1) #making sure the robot is finished moving
@@ -145,7 +128,8 @@ class BedMaker():
                 workspace_img = c_img.mask_binary(mask)
 
                 a = time.time()
-                center_masses, directions, masks = run_connected_components(workspace_img, DIST_TOL, COLOR_TOL, SIZE_TOL, viz=True)
+                center_masses, directions, masks = run_connected_components(workspace_img,
+                    cfg.DIST_TOL, cfg.COLOR_TOL, cfg.SIZE_TOL, viz=True)
                 print "Time to find masses:", time.time() - a
                 print "num masses", len(center_masses)
                 if len(center_masses) == 0:
@@ -161,16 +145,16 @@ class BedMaker():
                 grasps = []
                 for i in range(len(center_masses)):
                     if not has_multiple[i]:
-                        pose,rot = self.compute_grasp(center_masses[i],directions[i],d_img)
+                        pose,rot = self.gm.compute_grasp(center_masses[i],directions[i],d_img)
                         grasps.append(self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=workspace_img.data))
 
                 if len(grasps) > 0:
                     print "running grasps"
-                    IPython.embed()     
+                    IPython.embed()
                     for grasp in grasps:
                         # raw_input("Click enter to execute grasp:" + grasp)
                         print "grasping", grasp
-                        self.execute_grasp(grasp)
+                        self.gm.execute_grasp(grasp)
                 else:
                     print("singulating")
                     a = time.time()
@@ -179,115 +163,20 @@ class BedMaker():
                     print "Time to find Singulate:", time.time() - a
                     display_singulation(start, end, workspace_img)
                     IPython.embed()
-                    self.singulate(start, end, c_img, d_img)
+                    self.gm.singulate(start, end, c_img, d_img)
                 IPython.embed()
                 # self.tt.move_to_pose(self.omni_base,'lower_start')
                 print "Current Time:", time.time() - b
 
                 self.whole_body.move_to_go()
-                self.position_head()
-
-    def execute_grasp(self,grasp_name):
-        self.gripper.open_gripper()
-
-        self.whole_body.end_effector_frame = 'hand_palm_link'
-        
-        self.whole_body.move_end_effector_pose(geometry.pose(),grasp_name)
-
-        self.gripper.close_gripper()
-        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),grasp_name)        
-        
-        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),'head_down')
-        
-    
-        self.gripper.open_gripper()
-
-
-    def compute_grasp(self, c_m, direction, d_img):
-        #convert from image to world (flip x)
-        dx = direction[1]
-        dy = direction[0]
-        dx *= -1
-        #standardize to 1st/2nd quadrants
-        if dy < 0:
-            dx *= -1
-            dy *= -1
-        rot = np.arctan2(dy, dx)
-        #convert to robot view (counterclockwise)
-        rot = 3.14 - rot
-        # IPython.embed()
-        # if direction: 
-        #     rot = 0.0
-        # else: 
-        #     rot = 1.57
-
-        x = int(c_m[1])
-        y = int(c_m[0])
-
-        z_box = d_img[y-20:y+20,x-20:x+20]
-
-        z = self.gp.find_mean_depth(z_box)
-
-        return [x,y,z],rot
-
-    def singulate(self, start, end, c_img, d_img):
-        # [355.9527559055119, 123.53543307086613, 977.26812500000005] 0.0
-        rot = np.pi/2 + np.arctan2(end[0] - start[0], end[1] - start[1])
-
-        self.gripper.close_gripper()
-        # self.go_to_point(start, rot, c_img, d_img)
-        # self.go_to_point(end, rot, c_img, d_img)
-
-        y, x = start
-        z_box = d_img[y-20:y+20, x-20:x+20]
-        z = self.gp.find_mean_depth(z_box)
-        # above_start_pose_name = self.gripper.get_grasp_pose(x,y,z,rot,c_img=c_img)
-        start_pose_name = self.gripper.get_grasp_pose(x,y,z,rot,c_img=c_img.data)
-        
-        y, x = end
-        z_box = d_img[y-20:y+20, x-20:x+20]
-        z = self.gp.find_mean_depth(z_box)
-        end_pose_name = self.gripper.get_grasp_pose(x,y,z,rot,c_img=c_img.data)
-        
-        # raw_input("Click enter to move to " + above_start_pose_name)
-        # self.whole_body.move_end_effector_pose(geometry.pose(), start_pose_name)
-        # raw_input("Click enter to singulate from " + start_pose_name)
-        print "singulating", start_pose_name
-        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.05), start_pose_name)
-        self.whole_body.move_end_effector_pose(geometry.pose(z=-.01), start_pose_name)
-        # raw_input("Click enter to singulate to " + end_pose_name)
-        print "singulating", end_pose_name
-        self.whole_body.move_end_effector_pose(geometry.pose(z=-.01), end_pose_name)
-
-        self.gripper.open_gripper()
-        
-        
-    def go_to_point(self, point, rot, c_img, d_img):
-        y, x = point
-        z_box = d_img[y-20:y+20, x-20:x+20]
-        z = self.gp.find_mean_depth(z_box)
-        print "singulation pose:", x,y,z
-        pose_name = self.gripper.get_grasp_pose(x,y,z,rot,c_img=c_img)
-        raw_input("Click enter to move to " + pose_name)
-        self.whole_body.move_end_effector_pose(geometry.pose(), pose_name)
-
-    
-    def position_head(self):
-
-        self.tt.move_to_pose(self.omni_base,'lower_start')
-        self.whole_body.move_to_joint_positions({'head_tilt_joint':-0.8})
-
-        
-
-
-
+                self.gm.position_head()
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         DEBUG = True
     else:
         DEBUG = False
-    
+
     cp = BedMaker()
     IPython.embed()
 
