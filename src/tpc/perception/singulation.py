@@ -41,7 +41,7 @@ def display_segments(image, segmented):
         plt.imshow(brick.data)
         plt.show()
 
-def get_border_goal(img, focus_mask, brick_mask):
+def get_border_goal(img, focus_mask, brick_masks):
     """ Splits the bricks in the image into two segments, and 
     returns the pixels that border the two segments, for the 
     hsr to push across (approximately), and the goal pixel, 
@@ -54,8 +54,8 @@ def get_border_goal(img, focus_mask, brick_mask):
         original image
     focus_mask :obj:`BinaryImage`
         crop of workspace
-    brick_mask :obj:`BinaryImage`
-        crop of object cluster
+    brick_mask :list:obj:`BinaryImage`
+        crops of object clusters (1st is one of interest)
     Returns
     -------
     :obj:`numpy.ndarray`
@@ -63,7 +63,7 @@ def get_border_goal(img, focus_mask, brick_mask):
     :obj:`numpy.ndarray`
         1x2 array of the goal pixel
     """
-    bricks = img.mask_binary(brick_mask)
+    bricks = img.mask_binary(brick_masks[0])
     segmented = bricks.segment_kmeans(.1, 2)
     border = segmented.border_pixels()
 
@@ -71,7 +71,10 @@ def get_border_goal(img, focus_mask, brick_mask):
     # display_segments(image, segmented)
 
     #Bricks and everything outside the tray
-    binary_im_framed = brick_mask + focus_mask.inverse()
+    #need all brick clusters here, not just one of interest
+    binary_im_framed = focus_mask.inverse()
+    for i in range(len(brick_masks)):
+        binary_im_framed += brick_masks[i]
     goal_pixel = binary_im_framed.most_free_pixel()
     return border, goal_pixel
 
@@ -134,7 +137,7 @@ def get_direction(points, goal_pixel):
             push_dir = -push_dir
     return push_dir, distance
 
-def find_singulation(img, focus_mask, brick_mask):
+def find_singulation(img, focus_mask, brick_masks):
     """ Determines the direction which the robot should push 
     the pile to separate it the most by pushing along the 
     direction of the border pixels between the bricks while 
@@ -146,8 +149,8 @@ def find_singulation(img, focus_mask, brick_mask):
         original image
     focus_mask :obj:`BinaryImage`
         crop of workspace
-    brick_mask :obj:`BinaryImage`
-        crop of object cluster
+    brick_mask :list:obj:`BinaryImage`
+        crops of object cluster (1st is one of interest)
     
     Returns
     -------
@@ -157,6 +160,7 @@ def find_singulation(img, focus_mask, brick_mask):
         1x2 vector representing the end of the singulation
     """
     #top of focus mask is out of range, so shouldn't be considered free space
+    #for most free pixel, need to consider ALL brick masks
     middle_mask_pix_y = int(np.mean(focus_mask.nonzero_pixels(), axis=0)[0])
     shape = focus_mask.shape 
     ycoords = [i for i in range(middle_mask_pix_y, int(shape[0]))]
@@ -168,11 +172,11 @@ def find_singulation(img, focus_mask, brick_mask):
     focus_mask = focus_mask.mask_by_ind(np.array(valid_pix))
     # cv2.imwrite("smallmask.png", focus_mask.data)
 
-    border, goal_pixel = get_border_goal(img, focus_mask, brick_mask)
+    border, goal_pixel = get_border_goal(img, focus_mask, brick_masks)
     direction, distance = get_direction(border, goal_pixel)
 
     mean = np.mean(border, axis=0)
-
+    brick_mask = brick_masks[0]
     low = brick_mask.closest_zero_pixel(mean, -1*direction, w=25)
     high = brick_mask.closest_zero_pixel(mean, direction)
     return low, high

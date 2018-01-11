@@ -93,7 +93,7 @@ class BedMaker():
         self.br = tf.TransformBroadcaster()
         self.tl = TransformListener()
 
-        self.ds = data_saver('tpc_rollouts')
+        self.ds = data_saver('tpc_rollouts/rollouts')
 
         self.gp = GraspPlanner()
         self.gripper = Crane_Gripper(self.gp, cam, options, robot.get('gripper'))
