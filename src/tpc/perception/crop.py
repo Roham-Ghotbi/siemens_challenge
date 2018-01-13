@@ -21,8 +21,20 @@ def crop_img(img, viz=False):
     #threshold to WA and flip colors
     gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     thresh_img = gray_img.copy()
-    thresh_img[np.where(gray_img > 250)] = 0
-    thresh_img[np.where(gray_img < 250)] = 255
+
+    hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+
+    #in hsv for cv2, white is (x, 0, 255)
+    for rnum, r in enumerate(hsv_img):
+        for cnum, c in enumerate(r):
+            sat = c[1]
+            val = c[2]
+            if sat < 40 and val > 215:
+                thresh_img[rnum][cnum] = 0
+            else:
+                thresh_img[rnum][cnum] = 255
+    # thresh_img[np.where(gray_img > 250)] = 0
+    # thresh_img[np.where(gray_img < 250)] = 255
 
     #remove noise by blurring and re-thresholding, then flip colors
     blur_amt = 20.0

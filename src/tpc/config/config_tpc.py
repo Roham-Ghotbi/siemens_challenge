@@ -10,6 +10,12 @@ COLOR_TOL = 40
 #number of pixels necssary for a cluster
 SIZE_TOL = 300
 
+#number of pixels in hsv bin to be 1 object
+HSV_MIN = 200
+
+#number of pixels in hsv bin to be > 1 object
+HSV_MAX = 1500
+
 #range around grasp point used to calculate average depth value
 ZRANGE = 20
 

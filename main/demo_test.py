@@ -30,64 +30,54 @@ import sys
 
 from tpc.python_labeler import Python_Labeler
 
-from tpc.perception.cluster_registration import run_connected_components, visualize, has_multiple_objects
+from tpc.perception.cluster_registration import run_connected_components, display_grasps, has_multiple_objects, grasps_within_pile
 from tpc.perception.singulation import find_singulation, display_singulation
 from tpc.perception.crop import crop_img
 from tpc.perception.bbox import bbox_to_mask, bbox_to_grasp
 from perception import ColorImage, BinaryImage
 from il_ros_hsr.p_pi.bed_making.table_top import TableTop
 
-import il_ros_hsr.p_pi.bed_making.config_bed as cfg
+import tpc.config.config_tpc as cfg
 
 from il_ros_hsr.core.rgbd_to_map import RGBD2Map
 
 if __name__ == "__main__":
-    c_img = cv2.imread("debug_imgs/f1/c_img.png")
+    for imgnum in range(1164, 1171):
+    # for imgnum in range(1170, 1171):
+        c_img = cv2.imread("debug_imgs/singulation_tests/IMG_" + str(imgnum) + ".jpg")
 
-    labeler = Python_Labeler()
-    data = labeler.label_image(c_img)
+        main_mask = crop_img(c_img)
+        col_img = ColorImage(c_img)
+        workspace_img = col_img.mask_binary(main_mask)
 
-    grasp_boxes = []
-    suction_boxes = []
-    singulate_boxes = []
-
-    for i in range(data['num_labels']):
-        bbox = data['objects'][i]['box']
-        classnum = data['objects'][i]['class']
-        classname = ['grasp', 'singulate', 'suction', 'quit'][classnum]
-        if classname == "grasp":
-            grasp_boxes.append(bbox)
-        elif classname == "suction":
-            suction_boxes.append(bbox)
-        elif classname == "singulate":
-            singulate_boxes.append(bbox)
-        elif classname == "quit":
-        	break 
-
-    main_mask = crop_img(c_img)
-    col_img = ColorImage(c_img)
-    workspace_img = col_img.mask_binary(main_mask)
-
-    grasps = []
-    viz_info = []
-    for i in range(len(grasp_boxes)):
-        bbox = grasp_boxes[i]
-        center_mass, direction = bbox_to_grasp(bbox, c_img, d_img)
-
-        viz_info.append([center_mass, direction])
-
-    suctions = []
-    for i in range(len(suction_boxes)):
-        suctions.append("compute_suction?")
-
-    if len(grasps) > 0 or len(suctions) > 0:
-    	print("grasping")
-        cv2.imwrite("grasps.png", visualize(workspace_img, [v[0] for v in viz_info], [v[1] for v in viz_info]))
-    elif len(singulate_boxes) > 0:
-        print("singulating")
-        obj_masks = [bbox_to_mask(sbox, c_img) for sbox in singulate_boxes]
-        start, end = find_singulation(col_img, main_mask, obj_masks)
-        display_singulation(start, end, workspace_img)
-        IPython.embed()
-    else:
-        print("cleared workspace")
+        center_masses, directions, masks = run_connected_components(workspace_img,
+            cfg.DIST_TOL, cfg.COLOR_TOL, cfg.SIZE_TOL, viz=False)
+        if len(center_masses) == 0:
+            print("cleared workspace")
+        else:
+            has_multiple = [has_multiple_objects(col_img.mask_binary(m), alg="hsv") for m in masks]
+            print "has multiple objects?:", has_multiple
+            grasps = []
+            viz_info = []
+            for i in range(len(center_masses)):
+                if not has_multiple[i]:
+                    viz_info.append([center_masses[i], directions[i]])
+                    grasps.append("a grasp")
+                else:
+                    new_cms, new_dirs = grasps_within_pile(col_img.mask_binary(masks[i]))
+                    for j in range(len(new_cms)):
+                        viz_info.append([new_cms[j], new_dirs[j]])
+                        grasps.append("a grasp")
+            if len(grasps) > 0:
+                print("grasping")
+                display_grasps(workspace_img, [v[0] for v in viz_info], [v[1] for v in viz_info],
+                    name = "debug_imgs/out/grasps_" + str(imgnum))
+            else:
+                print("singulating")
+                for pilenum in range(len(masks)):
+                    curr_pile = masks[pilenum]
+                    other_piles = masks[:pilenum] + masks[pilenum+1:]
+                    start, end, rot, free_pix = find_singulation(col_img, main_mask, curr_pile,
+                        other_piles, alg="border") 
+                    display_singulation(start, end, rot, workspace_img, free_pix, 
+                        name = "debug_imgs/out/singulate_" + str(imgnum) + "_" + str(pilenum))

@@ -123,9 +123,9 @@ class BedMaker():
             print "time to get images", time.time() - a
             print "\n new iteration"
             if(not c_img == None and not d_img == None):
-                mask = crop_img(c_img)
-                c_img = ColorImage(c_img)
-                workspace_img = c_img.mask_binary(mask)
+                main_mask = crop_img(c_img)
+                col_img = ColorImage(c_img)
+                workspace_img = col_img.mask_binary(main_mask)
 
                 a = time.time()
                 center_masses, directions, masks = run_connected_components(workspace_img,
@@ -133,13 +133,14 @@ class BedMaker():
                 print "Time to find masses:", time.time() - a
                 print "num masses", len(center_masses)
                 if len(center_masses) == 0:
+                    print("cleared workspace")
                     break
 
                 # for i, m in enumerate(masks):
                 #     cv2.imwrite("debug_imgs/" + str(i) + ".png", m)
                 # nums = [len(k.nonzero_pixels()) for k in masks]
 
-                has_multiple = [has_multiple_objects(m) for m in masks]
+                has_multiple = [has_multiple_objects(col_img.mask_binary(m), alg="hsv") for m in masks]
                 print "has multiple objects?:", has_multiple
 
                 grasps = []
@@ -147,6 +148,9 @@ class BedMaker():
                     if not has_multiple[i]:
                         pose,rot = self.gm.compute_grasp(center_masses[i],directions[i],d_img)
                         grasps.append(self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=workspace_img.data))
+                    else:
+                        #check if grasps within the group are possible 
+                        pass
 
                 if len(grasps) > 0:
                     print "running grasps"
@@ -158,12 +162,13 @@ class BedMaker():
                 else:
                     print("singulating")
                     a = time.time()
-
-                    start, end = find_singulation(c_img, mask, masks[0])
+                    curr_pile = masks[0]
+                    other_piles = masks[1:]
+                    start, end, rot, free_pix = find_singulation(col_img, main_mask, curr_pile,
+                        other_piles, alg="border")
                     print "Time to find Singulate:", time.time() - a
-                    display_singulation(start, end, workspace_img)
-                    IPython.embed()
-                    self.gm.singulate(start, end, c_img, d_img)
+                    display_singulation(start, end, rot, workspace_img, free_pix)
+                    self.gm.singulate(start, end, rot, col_img, d_img, expand=True)
                 IPython.embed()
                 # self.tt.move_to_pose(self.omni_base,'lower_start')
                 print "Current Time:", time.time() - b
