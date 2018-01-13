@@ -65,7 +65,7 @@ def display_grasps(img, center_masses, directions,name="grasps"):
     box_size = 5
     line_color = box_color[::-1]
     line_size = 40
-    img_data = img.data
+    img_data = np.copy(img.data)
     for i in range(len(center_masses)):
         cm = center_masses[i]
         d = directions[i] #True if y orientation
@@ -170,8 +170,10 @@ def is_valid_grasp(point, focus_mask):
     """
     ymid = int(point[0])
     xmid = int(point[1])
-    for y in range(ymid - 3, ymid + 3):
-        for x in range(xmid - 3, xmid + 3):
+    #increase range to reduce false positives
+    check_range = 4 
+    for y in range(ymid - check_range, ymid + check_range):
+        for x in range(xmid - check_range, xmid + check_range):
             if focus_mask.data[y][x] != 0:
                 return False
     return True
@@ -208,8 +210,8 @@ def grasps_within_pile(color_mask):
         center_mass = g.center_mass()
         direction = g.orientation()
         #matches endpoints of line in visualization
-        grasp_top = center_mass + direction * 25
-        grasp_bot = center_mass - direction * 25
+        grasp_top = center_mass + direction * 20
+        grasp_bot = center_mass - direction * 20
         if is_valid_grasp(grasp_top, focus_mask) and is_valid_grasp(grasp_bot, focus_mask):
             center_masses.append(center_mass)
             directions.append(direction) 

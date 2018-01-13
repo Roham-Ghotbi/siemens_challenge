@@ -216,6 +216,10 @@ def find_singulation(img, focus_mask, obj_mask, other_objs, alg="border"):
         1x2 vector representing the end of the singulation
     float
         angle of gripper, aligned towards free space
+    :obj: `numpy.ndarray`
+        1x2 vector representing the goal pixel
+    :obj: `numpy.ndarray`
+        1x2 vector representing the middle of singulation, if any
     """
     # focus_mask = restrict_focus_mask(focus_mask)
 
@@ -232,6 +236,7 @@ def find_singulation(img, focus_mask, obj_mask, other_objs, alg="border"):
         push_angle = np.arctan2(push_dir[0], push_dir[1])
         #want gripper perpendicular to push
         gripper_angle = push_angle + np.pi/2.0
+        mid_point = None
     elif alg == "border":
         #don't restrict angle of gripper
         direction, distance = get_direction(border, goal_pixel, alg="free", max_angle=np.pi)
@@ -242,10 +247,11 @@ def find_singulation(img, focus_mask, obj_mask, other_objs, alg="border"):
         free_push_dir = free_high - free_low 
         #want gripper in line with free pixel direction
         gripper_angle = np.arctan2(free_push_dir[0], free_push_dir[1])
+        mid_point = free_low - 3 * direction
     else:
         raise ValueError("Unsupported algorithm specified. Use `border` or `free`.")
 
-    return low, high, gripper_angle, goal_pixel
+    return low, high, gripper_angle, goal_pixel, free_high
 
 def display_singulation(low, high, rot, image, goal_pixel, name="singulate"):
     plt.figure()

@@ -1,7 +1,8 @@
 import sys
 import IPython
 import tpc.config.config_tpc as cfg
-
+from hsrb_interface import geometry
+import numpy as np
 class GraspManipulator():
     def __init__(self, gp, gripper, whole_body, omni_base, tt):
         self.gp = gp
@@ -21,13 +22,21 @@ class GraspManipulator():
         z = self.get_z(point, d_img)
         y, x = point
         pose_name = self.gripper.get_grasp_pose(x,y,z,rot,c_img=c_img.data)
+        return pose_name
 
-    def singulate(self, start, end, rot, c_img, d_img, expand=False):
+    def singulate(self, start, end, mid, rot, c_img, d_img, expand=False):
+        """
+        todo
+        change open/close gripper to L shape motion
+        """
+        rot = 0 #testing if this affect robot position
         self.gripper.close_gripper()
 
         start_pose_name = self.get_pose(start, rot, c_img, d_img)
 
-        mid = (start + end)/2.0
+        half = start * 1.0/4.0 + end * 3.0/4.0
+        half_pose_name = self.get_pose(half, rot, c_img, d_img)
+
         mid_pose_name = self.get_pose(mid, rot, c_img, d_img)
 
         end_pose_name = self.get_pose(end, rot, c_img, d_img)
@@ -37,16 +46,22 @@ class GraspManipulator():
         # raw_input("Click enter to singulate from " + start_pose_name)
         print "singulating", start_pose_name
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.05), start_pose_name)
+
         self.whole_body.move_end_effector_pose(geometry.pose(z=-.01), start_pose_name)
         # raw_input("Click enter to singulate to " + end_pose_name)
-        print "singulating", mid_pose_name
-        self.whole_body.move_end_effector_pose(geometry.pose(z=-.01), mid_pose_name)
+        print "singulating", half_pose_name
+        self.whole_body.move_end_effector_pose(geometry.pose(z=0), half_pose_name)
         
-        self.gripper.open_gripper()
-        self.gripper.close_gripper()
+        # self.gripper.open_gripper()
+        # self.gripper.close_gripper()
+        print "singulating", mid_pose_name
+        self.whole_body.move_end_effector_pose(geometry.pose(z=0), mid_pose_name)
+
+        print "singulating", half_pose_name
+        self.whole_body.move_end_effector_pose(geometry.pose(z=0), half_pose_name)
 
         print "singulating", end_pose_name
-        self.whole_body.move_end_effector_pose(geometry.pose(z=-.01), end_pose_name)
+        self.whole_body.move_end_effector_pose(geometry.pose(z=0), end_pose_name)
 
         self.gripper.open_gripper()
 
@@ -73,28 +88,20 @@ class GraspManipulator():
 
         return [x,y,z],rot
 
-    def execute_grasp(self, grasp_name):
-        """
-        todo
-        1- need to modify to go to point above the grasp before executing the grasp (x, y before z)
-            do some thing when lifting (z before x, y)
-        2- need to add multiple end points
-            pass in integer identifier (mapping to color bin)
-            linearly space colors along side of the table
-            put certain color in box
-        """
- 
+    def execute_grasp(self, grasp_name): 
         self.gripper.open_gripper()
 
         self.whole_body.end_effector_frame = 'hand_palm_link'
 
+        #before lowering gripper, go directly above grasp position
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-.1),grasp_name)
+        
         self.whole_body.move_end_effector_pose(geometry.pose(),grasp_name)
-
         self.gripper.close_gripper()
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),grasp_name)
 
+        #move to goal
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),'head_down')
-
         self.gripper.open_gripper()
 
     def go_to_point(self, point, rot, c_img, d_img):

@@ -33,7 +33,7 @@ import sys
 
 
 from il_ros_hsr.p_pi.tpc.gripper import Lego_Gripper
-from tpc.perception.cluster_registration import run_connected_components, visualize, has_multiple_objects
+from tpc.perception.cluster_registration import run_connected_components, display_grasps, has_multiple_objects, grasps_within_pile
 from tpc.perception.singulation import find_singulation, display_singulation
 from tpc.perception.crop import crop_img
 from tpc.manipulation.primitives import GraspManipulator
@@ -87,7 +87,7 @@ class BedMaker():
         self.tl = TransformListener()
 
         self.gp = GraspPlanner()
-        self.gripper = Crane_Gripper(self.gp, cam, options, robot.get('gripper'))
+        self.gripper = Crane_Gripper(self.gp, self.cam, self.com.Options, self.robot.get('gripper'))
 
         self.gm = GraspManipulator(self.gp, self.gripper, self.whole_body, self.omni_base, self.tt)
 
@@ -129,7 +129,7 @@ class BedMaker():
 
                 a = time.time()
                 center_masses, directions, masks = run_connected_components(workspace_img,
-                    cfg.DIST_TOL, cfg.COLOR_TOL, cfg.SIZE_TOL, viz=True)
+                    cfg.DIST_TOL, cfg.COLOR_TOL, cfg.SIZE_TOL, viz=False)
                 print "Time to find masses:", time.time() - a
                 print "num masses", len(center_masses)
                 if len(center_masses) == 0:
@@ -143,17 +143,30 @@ class BedMaker():
                 has_multiple = [has_multiple_objects(col_img.mask_binary(m), alg="hsv") for m in masks]
                 print "has multiple objects?:", has_multiple
 
+                #TOFIX- visualization messed up somewhere- modified workspace_img with false grasps
+
                 grasps = []
+                viz_info = []
                 for i in range(len(center_masses)):
                     if not has_multiple[i]:
-                        pose,rot = self.gm.compute_grasp(center_masses[i],directions[i],d_img)
+                        cm = center_masses[i]
+                        di = directions[i]
+                        viz_info.append([cm, di])
+                        pose,rot = self.gm.compute_grasp(cm, di,d_img)
                         grasps.append(self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=workspace_img.data))
                     else:
-                        #check if grasps within the group are possible 
-                        pass
+                        new_cms, new_dirs = grasps_within_pile(col_img.mask_binary(masks[i]))
+                        for j in range(len(new_cms)):
+                            new_cm = new_cms[j]
+                            new_di = new_dirs[j]
+                            viz_info.append([new_cm, new_di])
+                            pose,rot = self.gm.compute_grasp(new_cm,new_di,d_img)
+                            grasps.append(self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=workspace_img.data))
 
                 if len(grasps) > 0:
                     print "running grasps"
+                    display_grasps(workspace_img, [v[0] for v in viz_info], [v[1] for v in viz_info],
+                    name = "grasps")
                     IPython.embed()
                     for grasp in grasps:
                         # raw_input("Click enter to execute grasp:" + grasp)
@@ -164,17 +177,19 @@ class BedMaker():
                     a = time.time()
                     curr_pile = masks[0]
                     other_piles = masks[1:]
-                    start, end, rot, free_pix = find_singulation(col_img, main_mask, curr_pile,
+                    start, end, rot, free_pix, mid = find_singulation(col_img, main_mask, curr_pile,
                         other_piles, alg="border")
                     print "Time to find Singulate:", time.time() - a
-                    display_singulation(start, end, rot, workspace_img, free_pix)
-                    self.gm.singulate(start, end, rot, col_img, d_img, expand=True)
-                IPython.embed()
+                    display_singulation(start, end, rot, workspace_img, free_pix, 
+                        name = "singulate")
+                    IPython.embed()
+                    self.gm.singulate(start, end, mid, rot, c_img, d_img, expand=True)
                 # self.tt.move_to_pose(self.omni_base,'lower_start')
                 print "Current Time:", time.time() - b
 
                 self.whole_body.move_to_go()
                 self.gm.position_head()
+                IPython.embed()
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
@@ -183,7 +198,6 @@ if __name__ == "__main__":
         DEBUG = False
 
     cp = BedMaker()
-    IPython.embed()
 
     # cp.bed_make()
     cp.lego_demo()
