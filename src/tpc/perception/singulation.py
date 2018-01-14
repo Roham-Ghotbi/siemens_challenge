@@ -63,7 +63,7 @@ def restrict_focus_mask(focus_mask):
         for y in ycoords:
             valid_pix.append([y,x])
     focus_mask = focus_mask.mask_by_ind(np.array(valid_pix))
-    # cv2.imwrite("smallmask.png", focus_mask.data)
+    cv2.imwrite("smallmask.png", focus_mask.data)
     return focus_mask
 
 def get_border(img, obj_mask):
@@ -162,6 +162,9 @@ def get_direction(border, goal_pixel, alg="border", max_angle=np.pi/6.0):
 
     if alg == "border":
         push_dir = border_dir
+        #prioritize upwards (high y to low in image)
+        if push_dir[0] > 0:
+            push_dir = -push_dir
     elif alg == "free":
         #define cone around optimal direction
         goal_sep_angle = np.arccos(np.abs(dot_prod))
@@ -181,11 +184,12 @@ def get_direction(border, goal_pixel, alg="border", max_angle=np.pi/6.0):
                 push_dir = left_border_dir
             else:
                 push_dir = right_border_dir
+        # reverse direction if necessary
+        if dot_prod < 0:
+            push_dir = -push_dir
     else:
         raise ValueError("Unsupported algorithm specified. Use `border` or `free`.")
-    # reverse direction if necessary
-    if dot_prod < 0:
-        push_dir = -push_dir
+
     return push_dir, distance
 
 def find_singulation(img, focus_mask, obj_mask, other_objs, alg="border"):
@@ -221,7 +225,7 @@ def find_singulation(img, focus_mask, obj_mask, other_objs, alg="border"):
     :obj: `numpy.ndarray`
         1x2 vector representing the middle of singulation, if any
     """
-    # focus_mask = restrict_focus_mask(focus_mask)
+    focus_mask = restrict_focus_mask(focus_mask)
 
     border = get_border(img, obj_mask)
     goal_pixel = get_goal(img, focus_mask, other_objs)
@@ -238,38 +242,46 @@ def find_singulation(img, focus_mask, obj_mask, other_objs, alg="border"):
         gripper_angle = push_angle + np.pi/2.0
         mid_point = None
     elif alg == "border":
-        #don't restrict angle of gripper
-        direction, distance = get_direction(border, goal_pixel, alg="free", max_angle=np.pi)
+        goal_dir = goal_pixel - mean
+        goal_dir = goal_dir / np.linalg.norm(goal_dir)
+        new_high = obj_mask.closest_zero_pixel(mean, goal_dir, w=25)
+        # direction, distance = get_direction(border, goal_pixel, alg="free", max_angle=np.pi)
 
-        free_low = obj_mask.closest_zero_pixel(mean, -1*direction, w=25)
-        free_high = obj_mask.closest_zero_pixel(mean, direction)
+        # free_low = obj_mask.closest_zero_pixel(mean, -1*direction, w=25)
+        # free_high = obj_mask.closest_zero_pixel(mean, direction)
         
-        free_push_dir = free_high - free_low 
-        #want gripper in line with free pixel direction
-        gripper_angle = np.arctan2(free_push_dir[0], free_push_dir[1])
-        mid_point = free_low - 3 * direction
+        # free_push_dir = free_high - free_low 
+        # #want gripper in line with free pixel direction
+        # gripper_angle = np.arctan2(free_push_dir[0], free_push_dir[1])
+        gripper_angle = 0
+        mid_point = new_high
     else:
         raise ValueError("Unsupported algorithm specified. Use `border` or `free`.")
 
-    return low, high, gripper_angle, goal_pixel, free_high
+    return low, high, gripper_angle, goal_pixel, mid_point
 
-def display_singulation(low, high, rot, image, goal_pixel, name="singulate"):
+def display_singulation(low, high, mid, image, goal_pixel, name="singulate"):
     plt.figure()
     ax = plt.axes()
     #push direction
+    middle = low * 1.0/4.0 + high * 3.0/4.0
+    high =  middle 
+
     ax.arrow(
             low[1], 
             low[0], 
-            high[1] - low[1], 
-            high[0] - low[0], 
+            middle[1] - low[1], 
+            middle[0] - low[0], 
             head_width=10, 
             head_length=10
         )
     #direction gripper would open 
-    middle = (low + high)/2.0
-    grip_vector = np.array([np.sin(rot) * 10, np.cos(rot) * 10])
-    low_grip = middle - grip_vector 
-    high_grip = middle + grip_vector 
+    # grip_vector = np.array([np.sin(rot) * 10, np.cos(rot) * 10])
+    # low_grip = middle - grip_vector 
+    # high_grip = middle + grip_vector 
+    high_grip = mid 
+    # low_grip = middle - (mid - middle)
+    low_grip = middle
     ax.arrow(
             low_grip[1], 
             low_grip[0], 

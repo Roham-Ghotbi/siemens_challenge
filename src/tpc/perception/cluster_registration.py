@@ -77,7 +77,7 @@ def display_grasps(img, center_masses, directions,name="grasps"):
         cv2.line(img_data, p0, p1, line_color, 2)
     cv2.imwrite(name + ".png", img_data)
 
-def get_hsv_hist(img):
+def get_hsv_hist(img, num_bins=6):
     """ Returns binned HSV histogram and pixel groupings
     Parameters
     ----------
@@ -96,6 +96,7 @@ def get_hsv_hist(img):
     #bin by 30 (165 to 15, excluding 0, 15 to 45, etc.)
     hue_counts = {}
     hue_pixels = {}
+    bin_size = 180/num_bins
     for rnum, row in enumerate(hsv):
         for cnum, pix in enumerate(row):
             hue = pix[0]
@@ -103,13 +104,25 @@ def get_hsv_hist(img):
             sat = pix[1]
             #ignore white, gray, black
             if hue != 0 and val > 40 and sat > 40:
-                binned_hue = (((hue + 15) % 180)/30) * 30
+                binned_hue = (((hue + bin_size/2) % 180)/bin_size) * bin_size
                 if binned_hue not in hue_counts:
                     hue_counts[binned_hue] = 0
                     hue_pixels[binned_hue] = []
                 hue_counts[binned_hue] += 1
                 hue_pixels[binned_hue].append([rnum, cnum])
     return hue_counts, hue_pixels
+
+def view_hsv(img):
+    _, pixels = get_hsv_hist(img)
+    
+    view = np.zeros(img.data.shape)
+    for hsv_col in pixels.keys():
+        points = pixels[hsv_col]
+        for p in points:
+            view[p[0]][p[1]] = [hsv_col, 128, 128]
+    view = view.astype(np.uint8)
+    col = cv2.cvtColor(view, cv2.COLOR_HSV2BGR)
+    #cv2.imwrite("hsv.png", view)
 
 def has_multiple_objects(img, alg="hsv"):
     """ Counts the objects in a cluster

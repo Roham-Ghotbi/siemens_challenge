@@ -39,7 +39,7 @@ class GraspManipulator():
 
         mid_pose_name = self.get_pose(mid, rot, c_img, d_img)
 
-        end_pose_name = self.get_pose(end, rot, c_img, d_img)
+        # end_pose_name = self.get_pose(end, rot, c_img, d_img)
 
         # raw_input("Click enter to move to " + above_start_pose_name)
         # self.whole_body.move_end_effector_pose(geometry.pose(), start_pose_name)
@@ -57,13 +57,16 @@ class GraspManipulator():
         print "singulating", mid_pose_name
         self.whole_body.move_end_effector_pose(geometry.pose(z=0), mid_pose_name)
 
-        print "singulating", half_pose_name
-        self.whole_body.move_end_effector_pose(geometry.pose(z=0), half_pose_name)
+        print "singulating", mid_pose_name
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.05), mid_pose_name)
 
-        print "singulating", end_pose_name
-        self.whole_body.move_end_effector_pose(geometry.pose(z=0), end_pose_name)
+        # print "singulating", half_pose_name
+        # self.whole_body.move_end_effector_pose(geometry.pose(z=0), half_pose_name)
 
-        self.gripper.open_gripper()
+        # print "singulating", end_pose_name
+        # self.whole_body.move_end_effector_pose(geometry.pose(z=0), end_pose_name)
+
+        # self.gripper.open_gripper()
 
     def compute_grasp(self, c_m, direction, d_img):
         #convert from image to world (flip x)
@@ -88,7 +91,7 @@ class GraspManipulator():
 
         return [x,y,z],rot
 
-    def execute_grasp(self, grasp_name): 
+    def execute_grasp(self, grasp_name, color): 
         self.gripper.open_gripper()
 
         self.whole_body.end_effector_frame = 'hand_palm_link'
@@ -101,7 +104,15 @@ class GraspManipulator():
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),grasp_name)
 
         #move to goal
-        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),'head_down')
+        if color == 0:
+            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),'lego1')
+        elif color == 60:
+            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),'lego2')
+        elif color == 120:
+            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),'lego3')
+        else:
+            print("WRONG COLORS")
+            IPython.embed()
         self.gripper.open_gripper()
 
     def go_to_point(self, point, rot, c_img, d_img):
