@@ -11,13 +11,19 @@ COLOR_TOL = 40
 SIZE_TOL = 300
 
 #number of pixels in hsv bin to be 1 object
-HSV_MIN = 200
+HSV_MIN = 300
 
 #number of pixels in hsv bin to be > 1 object
 HSV_MAX = 1500
 
+#distance grasp extends
+LINE_SIZE = 40
+
 #range around grasp point used to calculate average depth value
 ZRANGE = 20
+
+#cv2 range for HSV hue values
+HUE_RANGE = 180
 
 #BELOW ARE PARAMETERS FROM BED_MAKING
 #remove if unneeded for tpc

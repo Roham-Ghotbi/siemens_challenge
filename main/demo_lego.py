@@ -33,7 +33,8 @@ import sys
 
 
 from il_ros_hsr.p_pi.tpc.gripper import Lego_Gripper
-from tpc.perception.cluster_registration import run_connected_components, display_grasps, has_multiple_objects, grasps_within_pile, view_hsv, get_hsv_hist
+from tpc.perception.cluster_registration import run_connected_components, display_grasps, \
+    has_multiple_objects, grasps_within_pile, view_hsv, get_hsv_hist, hsv_classify
 from tpc.perception.singulation import find_singulation, display_singulation
 from tpc.perception.crop import crop_img
 from tpc.manipulation.primitives import GraspManipulator
@@ -136,49 +137,45 @@ class BedMaker():
                     print("cleared workspace")
                     break
 
-                # for i, m in enumerate(masks):
-                #     cv2.imwrite("debug_imgs/" + str(i) + ".png", m)
-                # nums = [len(k.nonzero_pixels()) for k in masks]
-
                 has_multiple = [has_multiple_objects(col_img.mask_binary(m), alg="hsv") for m in masks]
                 print "has multiple objects?:", has_multiple
 
-                #TOFIX- visualization messed up somewhere- modified workspace_img with false grasps
-
                 grasps = []
-                graspmasks = []
+                grasp_cms = []
+                grasp_dirs = []
+                grasp_masks = []
                 viz_info = []
                 for i in range(len(center_masses)):
                     if not has_multiple[i]:
                         cm = center_masses[i]
                         di = directions[i]
-                        viz_info.append([cm, di])
+                        grasp_cms.append(cm)
+                        grasp_dirs.append(di)
                         pose,rot = self.gm.compute_grasp(cm, di,d_img)
-                        graspmasks.append(masks[i])
+                        grasp_masks.append(masks[i])
                         grasps.append(self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=workspace_img.data))
                     else:
                         new_cms, new_dirs = grasps_within_pile(col_img.mask_binary(masks[i]))
                         for j in range(len(new_cms)):
                             new_cm = new_cms[j]
                             new_di = new_dirs[j]
+                            grasp_cms.append(new_cm)
+                            grasp_dirs.append(new_di)
                             viz_info.append([new_cm, new_di])
                             pose,rot = self.gm.compute_grasp(new_cm,new_di,d_img)
-                            graspmasks.append(masks[i])
+                            #should actually be recomputing a new mask here!!!
+                            grasp_masks.append(masks[i]) 
                             grasps.append(self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=workspace_img.data))
 
                 if len(grasps) > 0:
                     print "running grasps"
-                    display_grasps(workspace_img, [v[0] for v in viz_info], [v[1] for v in viz_info],
-                    name = "grasps")
+                    display_grasps(workspace_img, grasp_cms, grasp_dirs, name = "grasps")
                     IPython.embed()
                     for i, grasp in enumerate(grasps):
                         # raw_input("Click enter to execute grasp:" + grasp)
                         print "grasping", grasp
-                        curr_mask = graspmasks[i]
-                        curr_col = col_img.mask_binary(curr_mask)
-                        counts, _ = get_hsv_hist(curr_col, num_bins=3)
-                        color = max(counts, key=lambda k:counts[k])
-                        self.gm.execute_grasp(grasp, color)
+                        class_num = hsv_classify(col_img.mask_binary(grasp_masks[i]))
+                        self.gm.execute_grasp(grasp, class_num)
                 else:
                     print("singulating")
                     a = time.time()
@@ -186,19 +183,19 @@ class BedMaker():
                     masks.sort(key=lambda m:len(m.nonzero_pixels()))
                     curr_pile = masks[0]
                     other_piles = masks[1:]
-                    start, end, rot, free_pix, mid = find_singulation(col_img, main_mask, curr_pile,
+                    waypoints, rot, free_pix = find_singulation(col_img, main_mask, curr_pile,
                         other_piles, alg="border")
                     print "Time to find Singulate:", time.time() - a
-                    display_singulation(start, end, mid, workspace_img, free_pix, 
+                    display_singulation(waypoints, workspace_img, free_pix, 
                         name = "singulate")
                     IPython.embed()
-                    self.gm.singulate(start, end, mid, rot, c_img, d_img, expand=True)
+                    self.gm.singulate(waypoints, rot, c_img, d_img, expand=True)
                 # self.tt.move_to_pose(self.omni_base,'lower_start')
                 print "Current Time:", time.time() - b
 
                 self.whole_body.move_to_go()
                 self.gm.position_head()
-                IPython.embed()
+                # IPython.embed()
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:

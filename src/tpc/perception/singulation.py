@@ -42,8 +42,8 @@ def display_segments(img, segmented):
         plt.show()
 
 def restrict_focus_mask(focus_mask):
-    """cuts off top of focus mask to remove it from
-    free space because robot range is estricted near top of workspace
+    """cuts off top half of focus mask to remove it from
+    free space because robot range is restricted near top of workspace
     
     Parameters
     ----------
@@ -208,10 +208,8 @@ def find_singulation(img, focus_mask, obj_mask, other_objs, alg="border"):
     other_objs :list:obj:`BinaryImage`
         list of crops of other object clusters
     alg :string
-        `border`: push along border, use free
-        space to bias gripper angle
-        `free`: push along border with bias to
-        free space, don't bias gripper angle
+        `border`: push along border then to free space
+        `free`: push along border with bias to free space
     Returns
     -------
     :obj:`numpy.ndarray`
@@ -235,68 +233,58 @@ def find_singulation(img, focus_mask, obj_mask, other_objs, alg="border"):
     low = obj_mask.closest_zero_pixel(mean, -1*direction, w=25)
     high = obj_mask.closest_zero_pixel(mean, direction)
 
+    waypoints = []
+    waypoints.append(low)
+
     if alg == "free":
+        waypoints.append(high)
         push_dir = high - low 
         push_angle = np.arctan2(push_dir[0], push_dir[1])
         #want gripper perpendicular to push
         gripper_angle = push_angle + np.pi/2.0
-        mid_point = None
     elif alg == "border":
+        waypoints.append(low * 1.0/4.0 + high * 3.0/4.0)
         goal_dir = goal_pixel - mean
         goal_dir = goal_dir / np.linalg.norm(goal_dir)
-        new_high = obj_mask.closest_zero_pixel(mean, goal_dir, w=25)
-        # direction, distance = get_direction(border, goal_pixel, alg="free", max_angle=np.pi)
-
-        # free_low = obj_mask.closest_zero_pixel(mean, -1*direction, w=25)
-        # free_high = obj_mask.closest_zero_pixel(mean, direction)
-        
-        # free_push_dir = free_high - free_low 
-        # #want gripper in line with free pixel direction
-        # gripper_angle = np.arctan2(free_push_dir[0], free_push_dir[1])
+        towards_free = obj_mask.closest_zero_pixel(mean, goal_dir, w=25)
+        waypoints.append(towards_free)
         gripper_angle = 0
-        mid_point = new_high
     else:
         raise ValueError("Unsupported algorithm specified. Use `border` or `free`.")
 
-    return low, high, gripper_angle, goal_pixel, mid_point
+    return waypoints, gripper_angle, goal_pixel
 
-def display_singulation(low, high, mid, image, goal_pixel, name="singulate"):
+def display_singulation(waypoints, image, goal_pixel, name="singulate"):
+    """
+    saves visualization of singulation trajectories
+
+    Parameters
+    ----------
+    waypoints :list:`numpy.ndarray`
+        1x2 points
+        subsequent points connected by arrows
+    image: obj:`ColorImage`
+    goal_pixel :`numpy.ndarray`
+        1x2 point to be marked with circle
+    name :string
+        name of saved image file
+    """
     plt.figure()
     ax = plt.axes()
-    #push direction
-    middle = low * 1.0/4.0 + high * 3.0/4.0
-    high =  middle 
+    for i in range(len(waypoints) - 1):
+        start = waypoints[i]
+        end = waypoints[i+1]
+        ax.arrow(
+            start[1], start[0],
+            end[1] - start[1], end[0] - start[0],
+            head_width = 10, head_length = 10
+        )
 
-    ax.arrow(
-            low[1], 
-            low[0], 
-            middle[1] - low[1], 
-            middle[0] - low[0], 
-            head_width=10, 
-            head_length=10
-        )
-    #direction gripper would open 
-    # grip_vector = np.array([np.sin(rot) * 10, np.cos(rot) * 10])
-    # low_grip = middle - grip_vector 
-    # high_grip = middle + grip_vector 
-    high_grip = mid 
-    # low_grip = middle - (mid - middle)
-    low_grip = middle
-    ax.arrow(
-            low_grip[1], 
-            low_grip[0], 
-            high_grip[1] - low_grip[1], 
-            high_grip[0] - low_grip[0], 
-            head_width=10, 
-            head_length=10
-        )
     plt.imshow(image.data)
     plt.plot(goal_pixel[1], goal_pixel[0], 'bo')
     plt.axis('off')
-    # plt.savefig("debug_imgs/single.png")
-    # plt.show()
-    plt.savefig(name + ".png")
 
+    plt.savefig(name + ".png")
 
 if __name__ == "__main__":
     files = [

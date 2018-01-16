@@ -24,49 +24,16 @@ class GraspManipulator():
         pose_name = self.gripper.get_grasp_pose(x,y,z,rot,c_img=c_img.data)
         return pose_name
 
-    def singulate(self, start, end, mid, rot, c_img, d_img, expand=False):
-        """
-        todo
-        change open/close gripper to L shape motion
-        """
-        rot = 0 #testing if this affect robot position
+    def singulate(self, waypoints, rot, c_img, d_img, expand=False):
         self.gripper.close_gripper()
 
-        start_pose_name = self.get_pose(start, rot, c_img, d_img)
+        pose_names = [self.get_pose(waypoint, rot, c_img, d_img) for waypoint in waypoints]
 
-        half = start * 1.0/4.0 + end * 3.0/4.0
-        half_pose_name = self.get_pose(half, rot, c_img, d_img)
+        for pose_name in pose_names:
+            print "singulating", pose_name
+            self.whole_body.move_end_effector_pose(geometry.pose(z=0), pose_name)
 
-        mid_pose_name = self.get_pose(mid, rot, c_img, d_img)
-
-        # end_pose_name = self.get_pose(end, rot, c_img, d_img)
-
-        # raw_input("Click enter to move to " + above_start_pose_name)
-        # self.whole_body.move_end_effector_pose(geometry.pose(), start_pose_name)
-        # raw_input("Click enter to singulate from " + start_pose_name)
-        print "singulating", start_pose_name
-        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.05), start_pose_name)
-
-        self.whole_body.move_end_effector_pose(geometry.pose(z=-.01), start_pose_name)
-        # raw_input("Click enter to singulate to " + end_pose_name)
-        print "singulating", half_pose_name
-        self.whole_body.move_end_effector_pose(geometry.pose(z=0), half_pose_name)
-        
-        # self.gripper.open_gripper()
-        # self.gripper.close_gripper()
-        print "singulating", mid_pose_name
-        self.whole_body.move_end_effector_pose(geometry.pose(z=0), mid_pose_name)
-
-        print "singulating", mid_pose_name
-        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.05), mid_pose_name)
-
-        # print "singulating", half_pose_name
-        # self.whole_body.move_end_effector_pose(geometry.pose(z=0), half_pose_name)
-
-        # print "singulating", end_pose_name
-        # self.whole_body.move_end_effector_pose(geometry.pose(z=0), end_pose_name)
-
-        # self.gripper.open_gripper()
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.05), pose_names[-1])
 
     def compute_grasp(self, c_m, direction, d_img):
         #convert from image to world (flip x)
@@ -81,7 +48,6 @@ class GraspManipulator():
         #convert to robot view (counterclockwise)
         rot = np.pi - rot
 
-
         x = int(c_m[1])
         y = int(c_m[0])
 
@@ -91,28 +57,22 @@ class GraspManipulator():
 
         return [x,y,z],rot
 
-    def execute_grasp(self, grasp_name, color): 
+    def execute_grasp(self, grasp_name, class_num):
+        if class_num != 1 and class_num != 2 and class_num != 3:
+            raise ValueError("currently does not support class besides 1, 2, 3") 
         self.gripper.open_gripper()
 
         self.whole_body.end_effector_frame = 'hand_palm_link'
 
         #before lowering gripper, go directly above grasp position
-        self.whole_body.move_end_effector_pose(geometry.pose(z=-.1),grasp_name)
-        
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),grasp_name)
         self.whole_body.move_end_effector_pose(geometry.pose(),grasp_name)
         self.gripper.close_gripper()
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),grasp_name)
 
         #move to goal
-        if color == 0:
-            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),'lego1')
-        elif color == 60:
-            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),'lego2')
-        elif color == 120:
-            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),'lego3')
-        else:
-            print("WRONG COLORS")
-            IPython.embed()
+        dropoff_pose_name = "lego" + str(class_num)
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),dropoff_pose_name)
         self.gripper.open_gripper()
 
     def go_to_point(self, point, rot, c_img, d_img):

@@ -6,6 +6,7 @@ from groups import Group
 from perception import ColorImage, BinaryImage
 import matplotlib.pyplot as plt
 import tpc.config.config_tpc as cfg
+from tpc.perception.crop import crop_img
 
 def run_connected_components(img, dist_tol=5, color_tol=45, size_tol=300, viz=False):
     """ Generates mask for
@@ -64,25 +65,30 @@ def display_grasps(img, center_masses, directions,name="grasps"):
     box_color = (255, 0, 0)
     box_size = 5
     line_color = box_color[::-1]
-    line_size = 40
     img_data = np.copy(img.data)
     for i in range(len(center_masses)):
         cm = center_masses[i]
-        d = directions[i] #True if y orientation
+        d = directions[i] 
 
         img_data[int(cm[0] - box_size):int(cm[0] + box_size), 
             int(cm[1] - box_size):int(cm[1] + box_size)] = box_color
-        p0 = tuple((cm - d * line_size/2)[::-1].astype('uint32'))
-        p1 = tuple((cm + d * line_size/2)[::-1].astype('uint32'))
+        p0 = tuple((cm - d * cfg.LINE_SIZE/2)[::-1].astype('uint32'))
+        p1 = tuple((cm + d * cfg.LINE_SIZE/2)[::-1].astype('uint32'))
         cv2.line(img_data, p0, p1, line_color, 2)
     cv2.imwrite(name + ".png", img_data)
 
-def get_hsv_hist(img, num_bins=6):
+def get_hsv_hist(img, num_bins=3):
     """ Returns binned HSV histogram and pixel groupings
     Parameters
     ----------
     img :obj:`ColorImg`
         cluster mask
+    num_bins :int
+        divides hsv hue space (0 to 179) into bins
+        for example, with 3 bins, they are grouped by:
+            150 to 30 = red
+            30 to 90 = green
+            90 to 150 = blue
     Returns
     -------
     :obj:tuple of
@@ -92,11 +98,12 @@ def get_hsv_hist(img, num_bins=6):
             hsv value to list of pixel coordinates
     """
     hsv = cv2.cvtColor(img.data, cv2.COLOR_BGR2HSV)
-    #create histogram of hues- for cv, from 0 to 179
-    #bin by 30 (165 to 15, excluding 0, 15 to 45, etc.)
+
     hue_counts = {}
     hue_pixels = {}
-    bin_size = 180/num_bins
+
+    bin_size = cfg.HUE_RANGE/num_bins
+
     for rnum, row in enumerate(hsv):
         for cnum, pix in enumerate(row):
             hue = pix[0]
@@ -104,7 +111,7 @@ def get_hsv_hist(img, num_bins=6):
             sat = pix[1]
             #ignore white, gray, black
             if hue != 0 and val > 40 and sat > 40:
-                binned_hue = (((hue + bin_size/2) % 180)/bin_size) * bin_size
+                binned_hue = (((hue + bin_size/2) % cfg.HUE_RANGE)/bin_size) * bin_size
                 if binned_hue not in hue_counts:
                     hue_counts[binned_hue] = 0
                     hue_pixels[binned_hue] = []
@@ -113,6 +120,14 @@ def get_hsv_hist(img, num_bins=6):
     return hue_counts, hue_pixels
 
 def view_hsv(img):
+    """ Bins image into colors based on hsv
+    Parameters
+    ----------
+    img :obj:`ColorImg`
+    Returns
+    -------
+    :obj:`ColorImg`
+    """
     _, pixels = get_hsv_hist(img)
     
     view = np.zeros(img.data.shape)
@@ -122,14 +137,32 @@ def view_hsv(img):
             view[p[0]][p[1]] = [hsv_col, 128, 128]
     view = view.astype(np.uint8)
     col = cv2.cvtColor(view, cv2.COLOR_HSV2BGR)
-    #cv2.imwrite("hsv.png", view)
+    return ColorImage(col)
+
+def hsv_classify(img, groups=3):
+    """ Classifies the lego by HSV
+    Parameters
+    ----------
+    img :obj:`ColorImg`
+        mask of object cluster
+    groups :int
+        number of hsv bins to classify with
+    Returns
+    -------
+    :integer
+        classification in [1, groups]
+    """
+    counts, _ = get_hsv_hist(img, num_bins=groups)
+    color = max(counts, key=counts.get)
+    class_num = (color * groups)/cfg.HUE_RANGE + 1
+    return class_num
 
 def has_multiple_objects(img, alg="hsv"):
     """ Counts the objects in a cluster
     Parameters
     ----------
-    img :obj:`BinaryImg`
-        cluster mask
+    img :obj:`ColorImg`
+        mask of object cluster
     algo :obj:`str`, optional
         Algorithm to use for counting (`size` or `color` or `hsv`)
     Returns
@@ -138,10 +171,13 @@ def has_multiple_objects(img, alg="hsv"):
         True if multiple objects, else False
     """
     if alg == "size":
+        #todo- modify to use projected image
         #relies on objects being the same size
+        img = img.to_binary()
         n_pixels = len(img.nonzero_pixels())
         n_objs = int(n_pixels/550)
     elif alg == "color":
+        img = img.to_binary()
         bin_span = 128
         bins = [0 for i in range((256/bin_span)**3)]
         img_data = img.data
@@ -209,6 +245,7 @@ def grasps_within_pile(color_mask):
 
     individual_masks = []
     focus_mask = color_mask.to_binary()
+
     for block_color in hue_counts.keys():
         #same threshold values for number of objects
         if hue_counts[block_color] > cfg.HSV_MIN and hue_counts[block_color] < cfg.HSV_MAX:
@@ -222,10 +259,46 @@ def grasps_within_pile(color_mask):
         g = Group(0, points = obj_mask.nonzero_pixels())
         center_mass = g.center_mass()
         direction = g.orientation()
+        direction = direction/np.linalg.norm(direction)
         #matches endpoints of line in visualization
-        grasp_top = center_mass + direction * 20
-        grasp_bot = center_mass - direction * 20
+        grasp_top = center_mass + direction * cfg.LINE_SIZE/2
+        grasp_bot = center_mass - direction * cfg.LINE_SIZE/2
         if is_valid_grasp(grasp_top, focus_mask) and is_valid_grasp(grasp_bot, focus_mask):
             center_masses.append(center_mass)
             directions.append(direction) 
     return center_masses, directions
+
+if __name__ == "__main__":
+    for j in range(1, 10):
+        c_img = cv2.imread("debug_imgs/samples/test_" + str(j) + ".png")
+        col_img = ColorImage(c_img)
+        main_mask = crop_img(c_img)
+        workspace_img = col_img.mask_binary(main_mask)
+
+        center_masses, directions, masks = run_connected_components(workspace_img,
+            cfg.DIST_TOL, cfg.COLOR_TOL, cfg.SIZE_TOL, viz=False)
+
+        has_multiple = [has_multiple_objects(col_img.mask_binary(m), alg="hsv") for m in masks]
+        print "has multiple objects?:", has_multiple
+
+        grasps = []
+        graspmasks = []
+        viz_info = []
+        for i in range(len(center_masses)):
+            if not has_multiple[i]:
+                cm = center_masses[i]
+                di = directions[i]
+                viz_info.append([cm, di])
+                graspmasks.append(masks[i])
+            else:
+                new_cms, new_dirs = grasps_within_pile(col_img.mask_binary(masks[i]))
+                for j in range(len(new_cms)):
+                    new_cm = new_cms[j]
+                    new_di = new_dirs[j]
+                    viz_info.append([new_cm, new_di])
+                    graspmasks.append(masks[i])
+
+        if len(graspmasks) > 0:
+            print "running grasps"
+            display_grasps(workspace_img, [v[0] for v in viz_info], [v[1] for v in viz_info],
+            name = "debug_imgs/samples/test_" + str(j) + "_h")
