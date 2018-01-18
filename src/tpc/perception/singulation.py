@@ -8,111 +8,135 @@ import sys
 from perception import ColorImage, BinaryImage
 import numpy as np
 from sklearn.decomposition import PCA
+import cv2
+import IPython
 
-points = np.array([
-        (462.90446650124068, 69.256823821339879), 
-        (229.13771712158811, 71.797766749379605), 
-        (194.83498759305209, 156.91935483870958), 
-        (493.39578163771705, 159.46029776674931)
-    ])
-
-def get_focus_mask(shape):
-    """ cuts out everything other than the stuff in the tray
-
-    Parameters
-    ----------
-    image : :obj:`ColorImage`
-
-    Returns
-    -------
-    :obj:`BinaryImage`
-        mask for the tray
-    """
-    focus_mask = np.zeros(shape, dtype=np.uint8)
-    rr, cc = polygon(points[:,1], points[:,0])
-    focus_mask[rr,cc] = 255
-    return BinaryImage(focus_mask)
-
-def display_border(image, border):
+def display_border(img, border):
     """ helper to display the border between the segments
 
     Parameters
     ----------
-    image : :obj:`ColorImage`
+    img : :obj:`ColorImage`
         image to display
     border : :obj:`numpy.ndarray`
         nx2 array of n border pixels
     """
-    plt.imshow(image.data)
+    plt.imshow(img.data)
     plt.axis('off')
     plt.plot(border[:,1], border[:,0], 'o')
     plt.show()
 
-def display_segments(image, segmented):
+def display_segments(img, segmented):
     """ helper to display the border between the segments
 
     Parameters
     ----------
-    image : :obj:`ColorImage`
+    img : :obj:`ColorImage`
         image to display
     segmented : :obj:`SegmentedImage`
         the segments to be displayed
     """
     for i in range(segmented.num_segments):
-        brick = image.mask_binary(segmented.segment_mask(i))
+        brick = img.mask_binary(segmented.segment_mask(i))
         plt.imshow(brick.data)
         plt.show()
 
-def get_border_goal(image):
-    """ Splits the bricks in the image into two segments, and 
-    returns the pixels that border the two segments, for the 
-    hsr to push across (approximately), and the goal pixel, 
-    which is determined to be the point on the tray that is 
-    most open
+def restrict_focus_mask(focus_mask):
+    """cuts off top half of focus mask to remove it from
+    free space because robot range is restricted near top of workspace
+    
+    Parameters
+    ----------
+    focus_mask :obj:`BinaryImage`
+        crop of workspace
+    Returns
+    -------
+    :obj:`BinaryImage`
+        crop of bottom half of workspace
+    """
+    middle_mask_pix_y = int(np.mean(focus_mask.nonzero_pixels(), axis=0)[0])
+    shape = focus_mask.shape 
+    ycoords = [i for i in range(middle_mask_pix_y, int(shape[0]))]
+    xcoords = [j for j in range(0, int(shape[1]))]
+    valid_pix = []
+    for x in xcoords:
+        for y in ycoords:
+            valid_pix.append([y,x])
+    focus_mask = focus_mask.mask_by_ind(np.array(valid_pix))
+    cv2.imwrite("smallmask.png", focus_mask.data)
+    return focus_mask
+
+def get_border(img, obj_mask):
+    """ Splits the object pile into two segments, and 
+    returns the pixels that border the two segments to be
+    used as the pushing direction
 
     Parameters
     ----------
-    image : :obj:`ColorImage`
-        image to display
-    
+    img :obj:`ColorImage`
+        original image
+    obj_mask :obj:`BinaryImage`
+        crop of object cluster 
     Returns
     -------
     :obj:`numpy.ndarray`
         nx2 array of n border pixels
-    :obj:`numpy.ndarray`
-        1x2 array of the goal pixel
     """
-    focus_mask = get_focus_mask(image.data.shape[:2])
-    focused = image.mask_binary(focus_mask)
-    brick_mask = focused.foreground_mask(60)
-
-    bricks = focused.mask_binary(brick_mask)
+    bricks = img.mask_binary(obj_mask)
     segmented = bricks.segment_kmeans(.1, 2)
     border = segmented.border_pixels()
 
-    # display_border(image, border)
-    # display_segments(image, segmented)
+    # display_border(img, border)
+    # display_segments(img, segmented)
 
-    #Bricks and everything outside the tray
-    binary_im_framed = brick_mask + focus_mask.inverse()
-    plt.imshow(binary_im_framed.data)
-    plt.show()
-    goal_pixel = binary_im_framed.most_free_pixel()
-    return border, goal_pixel
+    #rare case- 2 clusters aren't touching
+    if len(border) == 0:
+        print("no boundary points")
+        border = obj_mask.nonzero_pixels()
 
-def get_direction(points, goal_pixel):
-    """ Determines the direction which the robot should push 
-    the pile to separate it the most by pushing along the 
-    direction of the border pixels between the bricks while 
-    pushing towards the goal pixel.  
+    return border 
+
+def get_goal(img, focus_mask, other_objs):
+    """ Finds the goal pixel, which is the point
+    in the workspace furthest from all walls and 
+    other object clusters 
 
     Parameters
     ----------
-    points : :obj:`numpy.ndarray`
-        nx2 array of n border pixels
-    goal_pixel : :obj:`numpy.ndarray`
+    img :obj:`ColorImage`
+        original image
+    focus_mask :obj:`BinaryImage`
+        crop of workspace
+    other_objs :list:obj:`BinaryImage`
+        list of crops of other object clusters
+    Returns
+    -------
+    :obj:`numpy.ndarray`
         1x2 array of the goal pixel
-    
+    """
+    occupied_space = focus_mask.inverse()
+    for i in range(len(other_objs)):
+        occupied_space += other_objs[i]
+    goal_pixel = occupied_space.most_free_pixel()
+    return goal_pixel
+
+def get_direction(border, goal_pixel, alg="border", max_angle=np.pi/6.0):
+    """ Finds the direction in which to push the
+    pile to separate it the most using the direction
+    of the border pixels 
+
+    Parameters
+    ----------
+    border :obj:`numpy.ndarray`
+        nx2 array of n border pixels
+    goal_pixel :obj:`numpy.ndarray`
+        1x2 array of the goal pixel
+    alg :string
+        `border`: push along border
+        `free`: push along border with bias to
+        free space
+    max_angle :float 
+        maximum angle bias towards free space
     Returns
     -------
     :obj:`numpy.ndarray`
@@ -122,86 +146,145 @@ def get_direction(points, goal_pixel):
         distance the robot should push to go through the 
         entire pile
     """
-    _max_boundary_angle = np.pi/6.
     #optimal pushing direction
     pca = PCA(2)
-    pca.fit(points)
-    separation_dir = pca.components_[0]
-    separation_dir = separation_dir / np.linalg.norm(separation_dir)
+    pca.fit(border)
+    border_dir = pca.components_[0]
+    border_dir /= np.linalg.norm(border_dir)
     max_distance = pca.explained_variance_[0]
-    distance = .25*max_distance
+    distance = .4*max_distance
 
     #optimal pushing location (most open space)
-    push_center = np.mean(points, axis=0)
+    push_center = np.mean(border, axis=0)
     goal_dir = goal_pixel - push_center
     goal_dir = goal_dir / np.linalg.norm(goal_dir)
+    dot_prod = goal_dir.dot(border_dir)
 
-    left_separation_dir = np.cos(_max_boundary_angle) * pca.components_[0] + \
-                            np.sin(_max_boundary_angle) * pca.components_[1]
-    right_separation_dir = np.cos(-_max_boundary_angle) * pca.components_[0] + \
-                            np.sin(-_max_boundary_angle) * pca.components_[1]
-        
-    dot_prod = goal_dir.dot(separation_dir)
-    goal_sep_angle = np.arccos(np.abs(dot_prod))
-    if goal_sep_angle < _max_boundary_angle:
-        # if within the cone, push directy toward the goal
-        push_dir = goal_dir
-    else:
-        left_alignment = np.abs(goal_dir.dot(left_separation_dir))
-        right_alignment = np.abs(goal_dir.dot(right_separation_dir))
-        if left_alignment > right_alignment:
-            push_dir = left_separation_dir
+    if alg == "border":
+        push_dir = border_dir
+        #prioritize upwards (high y to low in image)
+        if push_dir[0] > 0:
+            push_dir = -push_dir
+    elif alg == "free":
+        #define cone around optimal direction
+        goal_sep_angle = np.arccos(np.abs(dot_prod))
+        if goal_sep_angle < max_angle:
+            # if within the cone, push directy toward the goal
+            push_dir = goal_dir
         else:
-            push_dir = right_separation_dir
-
+            #if not within the cone, use the closest edge of the cone
+            left_border_dir = np.cos(max_angle) * pca.components_[0] + \
+                                np.sin(max_angle) * pca.components_[1]
+            right_border_dir = np.cos(-max_angle) * pca.components_[0] + \
+                                np.sin(-max_angle) * pca.components_[1]
+            
+            left_alignment = np.abs(goal_dir.dot(left_border_dir))
+            right_alignment = np.abs(goal_dir.dot(right_border_dir))
+            if left_alignment > right_alignment:
+                push_dir = left_border_dir
+            else:
+                push_dir = right_border_dir
         # reverse direction if necessary
         if dot_prod < 0:
             push_dir = -push_dir
+    else:
+        raise ValueError("Unsupported algorithm specified. Use `border` or `free`.")
+
     return push_dir, distance
 
-def find_singulation(image):
-    """ Determines the direction which the robot should push 
-    the pile to separate it the most by pushing along the 
-    direction of the border pixels between the bricks while 
-    pushing towards the goal pixel.  
+def find_singulation(img, focus_mask, obj_mask, other_objs, alg="border"):
+    """ Finds the direction in which the robot should push 
+    the pile to separate it the most, and the gripper angle
+    which will keep objects farthest from other piles
 
     Parameters
     ----------
-    points : :obj:`numpy.ndarray`
-        nx2 array of n border pixels
-    goal_pixel : :obj:`numpy.ndarray`
-        1x2 array of the goal pixel
-    
+    img :obj:`ColorImage`
+        original image
+    focus_mask :obj:`BinaryImage`
+        crop of workspace
+    obj_mask :obj:`BinaryImage`
+        crop of object cluster
+    other_objs :list:obj:`BinaryImage`
+        list of crops of other object clusters
+    alg :string
+        `border`: push along border then to free space
+        `free`: push along border with bias to free space
     Returns
     -------
     :obj:`numpy.ndarray`
-        1x2 vector pointing in the direction in which the 
-        robot should singulate
-    :obj: int
-        distance the robot should push to go through the 
-        entire pile
+        1x2 vector representing the start of the singulation
+    :obj: `numpy.ndarray`
+        1x2 vector representing the end of the singulation
+    float
+        angle of gripper, aligned towards free space
+    :obj: `numpy.ndarray`
+        1x2 vector representing the goal pixel
+    :obj: `numpy.ndarray`
+        1x2 vector representing the middle of singulation, if any
     """
-    border, goal_pixel = get_border_goal(image)
-    direction, distance = get_direction(border, goal_pixel)
+    focus_mask = restrict_focus_mask(focus_mask)
+
+    border = get_border(img, obj_mask)
+    goal_pixel = get_goal(img, focus_mask, other_objs)
+    direction, distance = get_direction(border, goal_pixel, alg=alg)
 
     mean = np.mean(border, axis=0)
-    low = mean - distance*direction
-    high = mean + distance*direction
+    low = obj_mask.closest_zero_pixel(mean, -1*direction, w=25)
+    high = obj_mask.closest_zero_pixel(mean, direction)
 
+    waypoints = []
+    waypoints.append(low)
+
+    if alg == "free":
+        waypoints.append(high)
+        push_dir = high - low 
+        push_angle = np.arctan2(push_dir[0], push_dir[1])
+        #want gripper perpendicular to push
+        gripper_angle = push_angle + np.pi/2.0
+    elif alg == "border":
+        waypoints.append(low * 1.0/4.0 + high * 3.0/4.0)
+        goal_dir = goal_pixel - mean
+        goal_dir = goal_dir / np.linalg.norm(goal_dir)
+        towards_free = obj_mask.closest_zero_pixel(mean, goal_dir, w=25)
+        waypoints.append(towards_free)
+        gripper_angle = 0
+    else:
+        raise ValueError("Unsupported algorithm specified. Use `border` or `free`.")
+
+    return waypoints, gripper_angle, goal_pixel
+
+def display_singulation(waypoints, image, goal_pixel, name="singulate"):
+    """
+    saves visualization of singulation trajectories
+
+    Parameters
+    ----------
+    waypoints :list:`numpy.ndarray`
+        1x2 points
+        subsequent points connected by arrows
+    image: obj:`ColorImage`
+    goal_pixel :`numpy.ndarray`
+        1x2 point to be marked with circle
+    name :string
+        name of saved image file
+    """
+    plt.figure()
     ax = plt.axes()
-    ax.arrow(
-            low[1], 
-            low[0], 
-            high[1] - low[1], 
-            high[0] - low[0], 
-            head_width=10, 
-            head_length=10
+    for i in range(len(waypoints) - 1):
+        start = waypoints[i]
+        end = waypoints[i+1]
+        ax.arrow(
+            start[1], start[0],
+            end[1] - start[1], end[0] - start[0],
+            head_width = 10, head_length = 10
         )
 
     plt.imshow(image.data)
     plt.plot(goal_pixel[1], goal_pixel[0], 'bo')
     plt.axis('off')
-    plt.show()
+
+    plt.savefig(name + ".png")
 
 if __name__ == "__main__":
     files = [

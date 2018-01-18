@@ -25,22 +25,25 @@ from tf import TransformListener
 import tf
 import rospy
 
+from il_ros_hsr.core.crane_gripper import Crane_Gripper
 from il_ros_hsr.core.grasp_planner import GraspPlanner
 
 from il_ros_hsr.p_pi.bed_making.com import Bed_COM as COM
 import sys
 
 
-
 from il_ros_hsr.p_pi.tpc.gripper import Lego_Gripper
-from tpc.perception.TPC_singulate import run_connected_components, draw
+from tpc.perception.cluster_registration import run_connected_components, display_grasps, \
+    has_multiple_objects, grasps_within_pile, view_hsv, get_hsv_hist, hsv_classify
+from tpc.perception.singulation import find_singulation, display_singulation
+from tpc.perception.crop import crop_img
+from tpc.manipulation.primitives import GraspManipulator
+from perception import ColorImage, BinaryImage
 from il_ros_hsr.p_pi.bed_making.table_top import TableTop
 
-import il_ros_hsr.p_pi.bed_making.config_bed as cfg
-
+import tpc.config.config_tpc as cfg
 
 from il_ros_hsr.core.rgbd_to_map import RGBD2Map
-
 
 class BedMaker():
 
@@ -50,14 +53,14 @@ class BedMaker():
 
         Parameters
         ----------
-        yumi : An instianted yumi robot 
+        yumi : An instianted yumi robot
         com : The common class for the robot
         cam : An open bincam class
 
-        debug : bool 
+        debug : bool
 
-            A bool to indicate whether or not to display a training set point for 
-            debuging. 
+            A bool to indicate whether or not to display a training set point for
+            debuging.
 
         '''
 
@@ -67,46 +70,33 @@ class BedMaker():
         self.omni_base = self.robot.get('omni_base')
         self.whole_body = self.robot.get('whole_body')
 
-        
+
         self.side = 'BOTTOM'
 
         self.cam = RGBD()
         self.com = COM()
 
+        if not DEBUG:
+            self.com.go_to_initial_state(self.whole_body)
 
+            self.tt = TableTop()
+            self.tt.find_table(self.robot)
 
-        # if cfg.USE_WEB_INTERFACE:
-        #     self.wl = Web_Labeler()
-        # else:
-        #     self.wl = Python_Labeler(cam = self.cam)
-
-
-        self.com.go_to_initial_state(self.whole_body)
-        
-        self.tt = TableTop()
-        self.tt.find_table(self.robot)
-        
-    
         self.grasp_count = 0
-      
 
         self.br = tf.TransformBroadcaster()
         self.tl = TransformListener()
 
-
-
         self.gp = GraspPlanner()
+        self.gripper = Crane_Gripper(self.gp, self.cam, self.com.Options, self.robot.get('gripper'))
 
-        self.gripper = Crane_Gripper(self.gp,self.cam,self.com.Options,self.robot.get('gripper'))
+        self.gm = GraspManipulator(self.gp, self.gripper, self.whole_body, self.omni_base, self.tt)
 
         print "after thread"
 
-       
-
-
     def find_mean_depth(self,d_img):
         '''
-        Evaluates the current policy and then executes the motion 
+        Evaluates the current policy and then executes the motion
         specified in the the common class
         '''
 
@@ -116,91 +106,103 @@ class BedMaker():
 
         return
 
-
     def lego_demo(self):
 
         self.rollout_data = []
         self.get_new_grasp = True
 
-        self.position_head()
+        if not DEBUG:
+            self.gm.position_head()
+        b = time.time()
         while True:
+            time.sleep(1) #making sure the robot is finished moving
 
-            
-
-            time.sleep(2)
-
+            a = time.time()
             c_img = self.cam.read_color_data()
             d_img = self.cam.read_depth_data()
-
-            
+            cv2.imwrite("debug_imgs/c_img.png", c_img)
+            print "time to get images", time.time() - a
+            print "\n new iteration"
             if(not c_img == None and not d_img == None):
-  
-                c_m, dirs = run_connected_components(c_img)
-                draw(c_img,c_m,dirs)
+                main_mask = crop_img(c_img)
+                col_img = ColorImage(c_img)
+                workspace_img = col_img.mask_binary(main_mask)
 
-                pose,rot = self.compute_grasp(c_m,dirs,d_img)
-                IPython.embed()
+                a = time.time()
+                center_masses, directions, masks = run_connected_components(workspace_img,
+                    cfg.DIST_TOL, cfg.COLOR_TOL, cfg.SIZE_TOL, viz=False)
+                print "Time to find masses:", time.time() - a
+                print "num masses", len(center_masses)
+                if len(center_masses) == 0:
+                    print("cleared workspace")
+                    break
 
-                # grasp_name = self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=c_img)
-        
-                # self.execute_grasp(grasp_name)
-                
-                # self.whole_body.move_to_go()
+                has_multiple = [has_multiple_objects(col_img.mask_binary(m), alg="hsv") for m in masks]
+                print "has multiple objects?:", has_multiple
+
+                grasps = []
+                grasp_cms = []
+                grasp_dirs = []
+                grasp_masks = []
+                viz_info = []
+                for i in range(len(center_masses)):
+                    if not has_multiple[i]:
+                        cm = center_masses[i]
+                        di = directions[i]
+                        grasp_cms.append(cm)
+                        grasp_dirs.append(di)
+                        pose,rot = self.gm.compute_grasp(cm, di,d_img)
+                        grasp_masks.append(masks[i])
+                        grasps.append(self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=workspace_img.data))
+                    else:
+                        new_cms, new_dirs = grasps_within_pile(col_img.mask_binary(masks[i]))
+                        for j in range(len(new_cms)):
+                            new_cm = new_cms[j]
+                            new_di = new_dirs[j]
+                            grasp_cms.append(new_cm)
+                            grasp_dirs.append(new_di)
+                            viz_info.append([new_cm, new_di])
+                            pose,rot = self.gm.compute_grasp(new_cm,new_di,d_img)
+                            #should actually be recomputing a new mask here!!!
+                            grasp_masks.append(masks[i]) 
+                            grasps.append(self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=workspace_img.data))
+
+                if len(grasps) > 0:
+                    print "running grasps"
+                    display_grasps(workspace_img, grasp_cms, grasp_dirs, name = "grasps")
+                    IPython.embed()
+                    for i, grasp in enumerate(grasps):
+                        # raw_input("Click enter to execute grasp:" + grasp)
+                        print "grasping", grasp
+                        class_num = hsv_classify(col_img.mask_binary(grasp_masks[i]))
+                        self.gm.execute_grasp(grasp, class_num)
+                else:
+                    print("singulating")
+                    a = time.time()
+                    #singulate smallest pile
+                    masks.sort(key=lambda m:len(m.nonzero_pixels()))
+                    curr_pile = masks[0]
+                    other_piles = masks[1:]
+                    waypoints, rot, free_pix = find_singulation(col_img, main_mask, curr_pile,
+                        other_piles, alg="border")
+                    print "Time to find Singulate:", time.time() - a
+                    display_singulation(waypoints, workspace_img, free_pix, 
+                        name = "singulate")
+                    IPython.embed()
+                    self.gm.singulate(waypoints, rot, c_img, d_img, expand=True)
                 # self.tt.move_to_pose(self.omni_base,'lower_start')
-                # time.sleep(1)
-                # self.whole_body.move_to_joint_positions({'head_tilt_joint':-0.8})
- 
-    
+                print "Current Time:", time.time() - b
 
-    def execute_grasp(self,grasp_name):
-
-        
-        whole_body.end_effector_frame = 'hand_palm_link'
-        
-        whole_body.move_end_effector_pose(geometry.pose(),grasp_name)
-
-
-        self.gripper.close_gripper()
-        
-        whole_body.move_end_effector_pose(geometry.pose(z=-0.1),'head_down')
-        
-    
-        self.gripper.open_gripper()
-
-
-    def compute_grasp(c_m,dirs,d_img):
-
-        if dirs: 
-            rot = 1.57
-        else: 
-            rot = 0 
-
-
-        x = c_m[0]
-        y = c_m[1]
-
-        z_box = d_img[x-20:x+20,y-20:y:20]
-
-        z = self.gp.find_mean_depth(z_box)
-
-        return [x,y,z],rot
-
-
-
-    
-    def position_head(self):
-
-        self.tt.move_to_pose(self.omni_base,'lower_start')
-        self.whole_body.move_to_joint_positions({'head_tilt_joint':-0.8})
-
-        
-
-
-
+                self.whole_body.move_to_go()
+                self.gm.position_head()
+                # IPython.embed()
 
 if __name__ == "__main__":
-   
-    
+    if len(sys.argv) > 1:
+        DEBUG = True
+    else:
+        DEBUG = False
+
     cp = BedMaker()
 
     # cp.bed_make()

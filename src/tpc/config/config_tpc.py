@@ -1,6 +1,32 @@
 import os
 import numpy as np
 
+#number of pixels apart to be singulated
+DIST_TOL = 5
+
+#background range for thresholding the image
+COLOR_TOL = 40
+
+#number of pixels necssary for a cluster
+SIZE_TOL = 300
+
+#number of pixels in hsv bin to be 1 object
+HSV_MIN = 300
+
+#number of pixels in hsv bin to be > 1 object
+HSV_MAX = 1500
+
+#distance grasp extends
+LINE_SIZE = 40
+
+#range around grasp point used to calculate average depth value
+ZRANGE = 20
+
+#cv2 range for HSV hue values
+HUE_RANGE = 180
+
+#BELOW ARE PARAMETERS FROM BED_MAKING
+#remove if unneeded for tpc
 #
 # path and dataset parameter
 #
@@ -14,12 +40,12 @@ DATA_PATH = ROOT_DIR + 'bed_rcnn/'
 USE_DART = False
 
 
-if USE_DART: 
+if USE_DART:
 
 	ROLLOUT_PATH = DATA_PATH+'rollouts_dart_cal/'
 
 	BC_HELD_OUT = DATA_PATH+'held_out_cal'
-else: 
+else:
 	ROLLOUT_PATH = DATA_PATH+'rollouts/'
 
 	BC_HELD_OUT = DATA_PATH+'held_out_bc'
@@ -37,14 +63,14 @@ STAT_PATH = DATA_PATH+'stats/'
 GRASP_LABEL_PATH = DATA_PATH+'grasp_labels/'
 SUCCESS_LABEL_PATH = DATA_PATH+'success_labels/'
 
-TRAN_OUTPUT_DIR = DATA_PATH +'transition_output/' 
+TRAN_OUTPUT_DIR = DATA_PATH +'transition_output/'
 TRAN_STATS_DIR = TRAN_OUTPUT_DIR + 'stats/'
 TRAIN_STATS_DIR_T = TRAN_OUTPUT_DIR + 'train_stats/'
 TEST_STATS_DIR_T = TRAN_OUTPUT_DIR + 'test_stats/'
 
 
 GRASP_OUTPUT_DIR = DATA_PATH + 'grasp_output/'
-GRASP_STAT_DIR = GRASP_OUTPUT_DIR + 'rollout_cs/' 
+GRASP_STAT_DIR = GRASP_OUTPUT_DIR + 'rollout_cs/'
 TRAIN_STATS_DIR_G = GRASP_OUTPUT_DIR + 'train_stats/'
 TEST_STATS_DIR_G = GRASP_OUTPUT_DIR + 'test_stats/'
 
@@ -71,7 +97,7 @@ else:
 	#BC_NETWORK
 	TRAN_NET_NAME = "09_06_00_10_12_SS_0save.ckpt-30300"
 
-	#BC_NETWORK 
+	#BC_NETWORK
 	GRASP_NET_NAME = "09_09_12_01_49_CS_0_save.ckpt-1200"
 
 
@@ -92,7 +118,7 @@ SS_TIME = 1.2
 RIGHT_SIDE = True
 
 
-#TENSIONER 
+#TENSIONER
 FORCE_LIMT = 25.0
 HIGH_FORCE = 25.0
 LOW_FORCE = 2.0
@@ -103,8 +129,8 @@ BOX = 10
 DEBUG_MODE = False
 
 
-#GRIPPER 
-GRIPPER_HEIGHT = 0.051
+#GRIPPER
+GRIPPER_HEIGHT = 0.06
 #GRIPPER_HEIGHT = 0.090
 MM_TO_M = 0.001
 

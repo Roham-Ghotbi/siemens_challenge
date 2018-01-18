@@ -6,8 +6,9 @@ from setuptools import setup
 
 setup(name='tpc',
       version='0.1.dev0',
-      description='IL HSR project code',
+      description='project code for the Toyota Picking Challenge',
       author='Michael Laskey',
       author_email='laskeymd@berkeley.edu',
-      packages=['src/tpc/config', 'src/tpc/perception'],
+      package_dir={'': 'src'},
+      packages=['tpc', 'tpc.config', 'tpc.perception']
      )
