@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 import IPython
 from skimage.draw import polygon
-from perception import BinaryImage
+# from perception import BinaryImage
 
 def crop_img(img, viz=False):
     """ Crops image polygonally
@@ -65,6 +65,15 @@ def crop_img(img, viz=False):
     points = (points * (1 + blur_amt/1.4/norms.reshape(-1,1))).astype("int32")
     points += mean
 
+    #adjust to arc
+    mid = [(points[0][0] + points[1][0])/2.0, points[0][1] * 1.5]
+    #scale down upper points halfway, move x outwards
+    points[0][1] *= 2
+    points[0][0] = (points[0][0] + points[3][0])/2.0
+    points[1][1] *= 2
+    points[1][0] = (points[1][0] + points[2][0])/2.0
+    points = np.vstack(((points[0], mid), points[1:])).astype("int32")
+    
     #create mask
     focus_mask = np.zeros(gray_img.shape, dtype=np.uint8)
     rr, cc = polygon(points[:,1], points[:,0])
@@ -74,8 +83,8 @@ def crop_img(img, viz=False):
         cv2.drawContours(img, [ctrs], -1, [0, 255, 0], 3)
         cv2.imwrite("crop.png", img)
         cv2.imwrite("mask.png", focus_mask)
-    return BinaryImage(focus_mask.astype("uint8"))
+    # return BinaryImage(focus_mask.astype("uint8"))
 
 if __name__ == "__main__":
-    img = cv2.imread("frame_40_1.png")
-    mask = crop_img(img, viz=True)
+    img = cv2.imread("sample.png")
+    crop_img(img, viz=True)

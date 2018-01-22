@@ -223,7 +223,7 @@ def find_singulation(img, focus_mask, obj_mask, other_objs, alg="border"):
     :obj: `numpy.ndarray`
         1x2 vector representing the middle of singulation, if any
     """
-    focus_mask = restrict_focus_mask(focus_mask)
+    # focus_mask = restrict_focus_mask(focus_mask)
 
     border = get_border(img, obj_mask)
     goal_pixel = get_goal(img, focus_mask, other_objs)
