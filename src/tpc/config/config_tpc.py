@@ -25,17 +25,21 @@ ZRANGE = 20
 #cv2 range for HSV hue values
 HUE_RANGE = 180
 
-#BELOW ARE PARAMETERS FROM BED_MAKING
-#remove if unneeded for tpc
+#whether to save rollouts
+COLLECT_DATA = True
+
+#classes of object
+#modify as needed- should correspond to class_nums used for grasping
+CLASSES = ["red lego", "blue lego", "green lego", "pencil"]
+
 #
 # path and dataset parameter
 #
-
 ROOT_DIR = '/media/autolab/1tb/data/'
+DATA_PATH = ROOT_DIR + 'tpc/'
 
+#BELOW INCLUDES PARAMETERS FROM BED_MAKING
 NET_NAME = '07_31_00_09_46save.ckpt-30300'
-DATA_PATH = ROOT_DIR + 'bed_rcnn/'
-
 
 USE_DART = False
 
@@ -81,7 +85,7 @@ WEIGHTS_FILE = None
 
 # WEIGHTS_FILE = os.path.join(DATA_PATH, 'weights', 'YOLO_small.ckpt')
 
-CLASSES = ['yes','no']
+# CLASSES = ['yes','no']
 
 # #CLASSES = ['aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus',
 #            'car', 'cat', 'chair', 'cow', 'diningtable', 'dog', 'horse',
