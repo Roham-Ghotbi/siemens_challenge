@@ -77,18 +77,22 @@ def display_grasps(img, center_masses, directions,name="grasps"):
         cv2.line(img_data, p0, p1, line_color, 2)
     cv2.imwrite(name + ".png", img_data)
 
-def get_hsv_hist(img, num_bins=3):
-    """ Returns binned HSV histogram and pixel groupings
+def dist_mod(m, a, b):
+    """
+    returns shortest distance between a and b under mod m
+    """
+    diff = abs(a-b)
+    if diff < m/2:
+        return diff
+    else:
+        return m - diff
+
+def get_hsv_hist(img):
+    """ Separates image into bins by HSV and creates histograms
     Parameters
     ----------
     img :obj:`ColorImg`
-        cluster mask
-    num_bins :int
-        divides hsv hue space (0 to 179) into bins
-        for example, with 3 bins, they are grouped by:
-            150 to 30 = red
-            30 to 90 = green
-            90 to 150 = blue
+        color image masked to relevant area
     Returns
     -------
     :obj:tuple of
@@ -102,25 +106,33 @@ def get_hsv_hist(img, num_bins=3):
     hue_counts = {}
     hue_pixels = {}
 
-    bin_size = cfg.HUE_RANGE/num_bins
-
     for rnum, row in enumerate(hsv):
         for cnum, pix in enumerate(row):
             hue = pix[0]
             val = pix[2]
             sat = pix[1]
-            #ignore white, gray, black
-            if hue != 0 and val > 40 and sat > 40:
-                binned_hue = (((hue + bin_size/2) % cfg.HUE_RANGE)/bin_size) * bin_size
-                if binned_hue not in hue_counts:
-                    hue_counts[binned_hue] = 0
-                    hue_pixels[binned_hue] = []
-                hue_counts[binned_hue] += 1
-                hue_pixels[binned_hue].append([rnum, cnum])
+            #ignore white
+            is_white = sat < 0.1 * cfg.SAT_RANGE
+            if not is_white:
+                #black is its own bin
+                is_black = val < 0.3 * cfg.VALUE_RANGE
+                if is_black:
+                    bin_hue = -1
+                else:
+                    all_hues = cfg.HUE_VALUES.keys()
+                    bin_hue = min(all_hues, key = lambda h: 
+                        dist_mod(cfg.HUE_RANGE, hue, h))
+
+                if bin_hue not in hue_counts:
+                    hue_counts[bin_hue] = 0
+                    hue_pixels[bin_hue] = []
+                hue_counts[bin_hue] += 1
+                hue_pixels[bin_hue].append([rnum, cnum])
+
     return hue_counts, hue_pixels
 
 def view_hsv(img):
-    """ Bins image into colors based on hsv
+    """ Separates image into bins by HSV and creates visualization
     Parameters
     ----------
     img :obj:`ColorImg`
@@ -134,27 +146,33 @@ def view_hsv(img):
     for hsv_col in pixels.keys():
         points = pixels[hsv_col]
         for p in points:
-            view[p[0]][p[1]] = [hsv_col, 128, 128]
+            #black case
+            if hsv_col == -1:
+                view[p[0]][p[1]] = [0, 255, 255]
+            else:
+                view[p[0]][p[1]] = [hsv_col, 128, 128]
     view = view.astype(np.uint8)
     col = cv2.cvtColor(view, cv2.COLOR_HSV2BGR)
     return ColorImage(col)
 
-def hsv_classify(img, groups=3):
+def hsv_classify(img):
     """ Classifies the lego by HSV
     Parameters
     ----------
     img :obj:`ColorImg`
-        mask of object cluster
-    groups :int
-        number of hsv bins to classify with
+        mask of lego
     Returns
     -------
     :integer
-        classification in [1, groups]
+        class number from 1 to 8
     """
     counts, _ = get_hsv_hist(img, num_bins=groups)
     color = max(counts, key=counts.get)
-    class_num = (color * groups)/cfg.HUE_RANGE + 1
+    
+    all_hues = cfg.HUE_VALUES.keys() + [-1]
+    all_hues.sort()
+
+    class_num = all_hues.index(color)
     return class_num
 
 def has_multiple_objects(img, alg="hsv"):

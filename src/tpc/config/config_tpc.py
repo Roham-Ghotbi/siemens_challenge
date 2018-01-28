@@ -23,10 +23,20 @@ LINE_SIZE = 40
 ZRANGE = 20
 
 #cv2 range for HSV hue values
-HUE_RANGE = 180
+HUE_RANGE = 180.0
+
+#cv2 range for HSV sat values
+SAT_RANGE = 255.0
+
+#cv2 range for HSV value values
+VALUE_RANGE = 255.0
+
+#see https://en.wikipedia.org/wiki/HSL_and_HSV (scaled down from 360 to 180 degrees)
+HUE_VALUES = {90: "cyan", 120: "blue", 0: "red", 15: "orange", 30: "yellow", 
+	60: "green", 35: "green-yellow"}
 
 #whether to save rollouts
-COLLECT_DATA = True
+COLLECT_DATA = False
 
 #classes of object
 #modify as needed- should correspond to class_nums used for grasping

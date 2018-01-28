@@ -46,22 +46,11 @@ import tpc.config.config_tpc as cfg
 
 from il_ros_hsr.core.rgbd_to_map import RGBD2Map
 
-class BedMaker():
+class LegoDemo():
 
     def __init__(self):
         '''
-        Initialization class for a Policy
-
-        Parameters
-        ----------
-        yumi : An instianted yumi robot
-        com : The common class for the robot
-        cam : An open bincam class
-
-        debug : bool
-
-            A bool to indicate whether or not to display a training set point for
-            debuging.
+        Class to run HSR lego task
 
         '''
 
@@ -108,7 +97,7 @@ class BedMaker():
         return
 
     def get_success(self, action):
-        print("Was " + action " successful? (y or n)")
+        print("Was " + action + " successful? (y or n)")
         succ = ""
         succ = raw_input()
         while not (succ == "y" or succ == "n"):
@@ -118,16 +107,20 @@ class BedMaker():
 
     def lego_demo(self):
 
-        self.dm = DataManager()
+        self.dm = DataManager(cfg.COLLECT_DATA)
         self.get_new_grasp = True
 
         if not DEBUG:
             self.gm.position_head()
 
         time.sleep(1) #making sure the robot is finished moving
-        c_img = self.cam.read_color_data()
-        d_img = self.cam.read_depth_data()
-
+        i = 4
+        while True:
+            c_img = self.cam.read_color_data()
+            d_img = self.cam.read_depth_data()
+            cv2.imwrite("debug_imgs/hsv_testing/img" + str(i) + ".png", c_img)
+            i += 1
+            IPython.embed()
         while not (c_img == None or d_img == None):
             print "\n new iteration"
 
@@ -140,7 +133,7 @@ class BedMaker():
             col_img = ColorImage(c_img)
             workspace_img = col_img.mask_binary(main_mask)
             self.dm.update_traj("crop", workspace_img.data)
-t
+
             a = time.time()
             center_masses, directions, masks = run_connected_components(workspace_img,
                 cfg.DIST_TOL, cfg.COLOR_TOL, cfg.SIZE_TOL, viz=False)
@@ -238,7 +231,5 @@ if __name__ == "__main__":
     else:
         DEBUG = False
 
-    cp = BedMaker()
-
-    # cp.bed_make()
-    cp.lego_demo()
+    task = LegoDemo()
+    task.lego_demo()
