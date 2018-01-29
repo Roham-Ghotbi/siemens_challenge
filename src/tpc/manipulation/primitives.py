@@ -70,10 +70,23 @@ class GraspManipulator():
         self.gripper.close_gripper()
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),grasp_name)
 
+        all_hues = cfg.HUE_VALUES.keys() + [-1]
+        all_hues.sort()
+        color = all_hues[class_num]
+        if color == -1:
+            color_name = "black"
+        else:
+            color_name = cfg.HUE_VALUES[color]
+        print("Identified lego: " + color_name)
+
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), 'lego_above')
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), 'lego_down')
+
         # #move to goal
         # dropoff_pose_name = "lego" + str(class_num)
         # self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),dropoff_pose_name)
         self.gripper.open_gripper()
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), 'lego_above')
 
     def go_to_point(self, point, rot, c_img, d_img):
         y, x = point

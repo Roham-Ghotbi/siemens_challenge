@@ -52,7 +52,6 @@ def run_connected_components(img, dist_tol=5, color_tol=45, size_tol=300, viz=Fa
 
         #much more variance in one direction indicates a line
         v1, v2 = pca.explained_variance_[0], pca.explained_variance_[1]
-        print(v1, v2)
         if v1 <= 10 * v2:
             filtered_centers.append(info[0])
             filtered_dirs.append(info[1])

@@ -143,23 +143,29 @@ class LegoDemo():
                 break
 
             #for each cluster, compute grasps
-            a = time.time()
+            find_grasps_time = 0
+            compute_grasps_time = 0
+
             to_singulate = []
             to_grasp = []
             for c_info in cluster_info:
+                a = time.time()
                 grasp_cms, grasp_dirs, grasp_masks = grasps_within_pile(col_img.mask_binary(c_info[2]))
+                find_grasps_time += time.time() - a
                 if len(grasp_cms) == 0:
                     to_singulate.append(c_info)
                 else:
+                    a = time.time()
                     for i in range(len(grasp_cms)):
                         pose,rot = self.gm.compute_grasp(grasp_cms[i], grasp_dirs[i], d_img)
                         grasp_pose = self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=workspace_img.data)
                         class_num = hsv_classify(col_img.mask_binary(grasp_masks[i]))
                         to_grasp.append((grasp_cms[i], grasp_dirs[i], grasp_masks[i], grasp_pose, class_num))
-
+                    compute_grasps_time += time.time() - a
             #impose ordering on grasps (by closest/highest y first)
             to_grasp.sort(key=lambda g:-1 * g[0][0])
-            self.dm.update_traj("compute_grasps_time", time.time() - a)
+            self.dm.update_traj("compute_grasps_time", compute_grasps_time)
+            self.dm.update_traj("find_grasps_time", find_grasps_time)
 
             if len(to_grasp) > 0:
                 self.dm.update_traj("action", "grasp")

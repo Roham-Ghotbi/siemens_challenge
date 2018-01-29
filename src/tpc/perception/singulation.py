@@ -216,7 +216,7 @@ def find_singulation(img, focus_mask, obj_mask, other_objs, alg="border"):
     waypoints = []
 
     #make sure starting point is not in pile
-    low += (low - high)/np.linalg.norm(low-high) * 3.0
+    low += (low - high)/np.linalg.norm(low-high) * 5.0
 
     waypoints.append(low)
 
