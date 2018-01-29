@@ -10,12 +10,6 @@ COLOR_TOL = 40
 #number of pixels necssary for a cluster
 SIZE_TOL = 300
 
-#number of pixels in hsv bin to be 1 object
-HSV_MIN = 300
-
-#number of pixels in hsv bin to be > 1 object
-HSV_MAX = 1500
-
 #distance grasp extends
 LINE_SIZE = 40
 

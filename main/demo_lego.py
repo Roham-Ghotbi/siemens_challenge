@@ -97,7 +97,7 @@ class LegoDemo():
         return
 
     def get_success(self, action):
-        print("Was " + action + " successful? (y or n)")
+        print("Was " + action + " +successful? (y or n)")
         succ = ""
         succ = raw_input()
         while not (succ == "y" or succ == "n"):
@@ -114,13 +114,9 @@ class LegoDemo():
             self.gm.position_head()
 
         time.sleep(1) #making sure the robot is finished moving
-        i = 4
-        while True:
-            c_img = self.cam.read_color_data()
-            d_img = self.cam.read_depth_data()
-            cv2.imwrite("debug_imgs/hsv_testing/img" + str(i) + ".png", c_img)
-            i += 1
-            IPython.embed()
+        c_img = self.cam.read_color_data()
+        d_img = self.cam.read_depth_data()
+
         while not (c_img == None or d_img == None):
             print "\n new iteration"
 
@@ -134,9 +130,11 @@ class LegoDemo():
             workspace_img = col_img.mask_binary(main_mask)
             self.dm.update_traj("crop", workspace_img.data)
 
+            #compute clusters (can have 1 or multiple legos)
             a = time.time()
             center_masses, directions, masks = run_connected_components(workspace_img,
                 cfg.DIST_TOL, cfg.COLOR_TOL, cfg.SIZE_TOL, viz=False)
+            cluster_info = zip(center_masses, directions, masks)
             self.dm.update_traj("connected_components_time", time.time() - a)
 
             print "num masses", len(center_masses)
@@ -144,54 +142,58 @@ class LegoDemo():
                 print("cleared workspace")
                 break
 
-            has_multiple = [has_multiple_objects(col_img.mask_binary(m), alg="hsv") for m in masks]
-            print "has multiple objects?:", has_multiple
-
+            #for each cluster, compute grasps
             a = time.time()
-            grasps = []
-            grasp_cms_dirs_masks = []
-            for i in range(len(center_masses)):
-                curr_cms, curr_dirs = [center_masses[i]], [directions[i]]
-                if has_multiple[i]:
-                    curr_cms, curr_dirs = grasps_within_pile(col_img.mask_binary(masks[i]))
-                for j in range(len(curr_cms)):
-                    pose,rot = self.gm.compute_grasp(curr_cms[j], curr_dirs[j], d_img)
-                    #should recompute masks for grasps within piles
-                    class_num = hsv_classify(col_img.mask_binary(masks[i]))
-                    grasp_cms_dirs_masks_classes.append((curr_cms[j], curr_dirs[j], masks[i], class_num))
-                    grasps.append(self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=workspace_img.data))
+            to_singulate = []
+            to_grasp = []
+            for c_info in cluster_info:
+                grasp_cms, grasp_dirs, grasp_masks = grasps_within_pile(col_img.mask_binary(c_info[2]))
+                if len(grasp_cms) == 0:
+                    to_singulate.append(c_info)
+                else:
+                    for i in range(len(grasp_cms)):
+                        pose,rot = self.gm.compute_grasp(grasp_cms[i], grasp_dirs[i], d_img)
+                        grasp_pose = self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=workspace_img.data)
+                        class_num = hsv_classify(col_img.mask_binary(grasp_masks[i]))
+                        to_grasp.append((grasp_cms[i], grasp_dirs[i], grasp_masks[i], grasp_pose, class_num))
+
+            #impose ordering on grasps (by closest/highest y first)
+            to_grasp.sort(key=lambda g:g[0][0])
             self.dm.update_traj("compute_grasps_time", time.time() - a)
 
-            #impose ordering on grasps (closest/highest y first)
-            all_grasp_info = zip(grasp_cms_dirs_masks_classes, grasps)
-            all_grasp_info.sort(key=lambda x:-x[0][0][0])
-            grasp_cms_dirs_masks_classes, grasps = [list(t) for t in zip(*all_grasp_info)]
-
-            if len(grasps) > 0:
+            if len(to_grasp) > 0:
                 self.dm.update_traj("action", "grasp")
-                self.dm.update_traj("info", [g for g in grasp_cms_dirs_masks_classes])
+                self.dm.update_traj("info", [(c[0], c[1], c[2], c[4]) for c in to_grasp])
 
                 print "running grasps"
-                display_grasps(workspace_img, [g[0] for g in grasp_cms_dirs_masks_classes],
-                    [g[1] for g in grasp_cms_dirs_masks], name = "grasps")
+                display_grasps(workspace_img, [g[0] for g in to_grasp],
+                    [g[1] for g in to_grasp])
                 IPython.embed()
 
-                self.dm.update_traj("success", "n")
+                successes = ["n" for i in range(len(to_grasp))]
+                times = [0 for i in range(len(to_grasp))]
+
+                self.dm.update_traj("success", successes)
                 #write here in case of failure causing crash
                 self.dm.append_traj()
 
-                a = time.time()
-                for i, grasp in enumerate(grasps):
-                    print "grasping", grasp
-                    self.gm.execute_grasp(grasp, class_num)
-                self.dm.update_traj("execute_time", time.time() - a)
-                self.dm.update_traj("success", self.get_success("grasps"))
-                self.dm.overwrite_traj()
+                for i in range(len(to_grasp)):
+                    print "grasping", to_grasp[i][3]
+                    a = time.time()
+                    self.gm.execute_grasp(to_grasp[i][3], to_grasp[i][4])
+                    times[i] = time.time() - a
+                    self.dm.update_traj("execute_time", times)
+                    successes[i] = self.get_success("grasp")
+                    self.dm.update_traj("success", successes)
+                    #write here in case of failure causing crash
+                    self.dm.overwrite_traj()
             else:
                 self.dm.update_traj("action", "singulate")
                 print("singulating")
                 a = time.time()
+
                 #singulate smallest pile
+                masks = [c[2] for c in to_singulate]
                 masks.sort(key=lambda m:len(m.nonzero_pixels()))
                 waypoints, rot, free_pix = find_singulation(col_img, main_mask, masks[0],
                     masks[1:], alg="border")

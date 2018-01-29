@@ -6,7 +6,6 @@ from groups import Group
 from perception import ColorImage, BinaryImage
 import matplotlib.pyplot as plt
 import tpc.config.config_tpc as cfg
-from tpc.perception.crop import crop_img
 
 def run_connected_components(img, dist_tol=5, color_tol=45, size_tol=300, viz=False):
     """ Generates mask for
@@ -48,7 +47,14 @@ def run_connected_components(img, dist_tol=5, color_tol=45, size_tol=300, viz=Fa
 
     return center_masses, directions, masks
 
-def display_grasps(img, center_masses, directions,name="grasps"):
+def draw_point(img, point):
+    box_color = (255, 0, 0)
+    box_size = 5
+    img[int(point[0] - box_size):int(point[0] + box_size), 
+        int(point[1] - box_size):int(point[1] + box_size)] = box_color
+    return img 
+
+def display_grasps(img, center_masses, directions,name="debug_imgs/grasps"):
     """ Displays the proposed grasps
     Parameters
     ----------
@@ -62,16 +68,15 @@ def display_grasps(img, center_masses, directions,name="grasps"):
     :obj:`numpy.ndarray`
         visualization image
     """
-    box_color = (255, 0, 0)
-    box_size = 5
+
     line_color = box_color[::-1]
     img_data = np.copy(img.data)
     for i in range(len(center_masses)):
         cm = center_masses[i]
         d = directions[i] 
 
-        img_data[int(cm[0] - box_size):int(cm[0] + box_size), 
-            int(cm[1] - box_size):int(cm[1] + box_size)] = box_color
+        img_data = draw_point(img_data, cm)
+
         p0 = tuple((cm - d * cfg.LINE_SIZE/2)[::-1].astype('uint32'))
         p1 = tuple((cm + d * cfg.LINE_SIZE/2)[::-1].astype('uint32'))
         cv2.line(img_data, p0, p1, line_color, 2)
@@ -168,7 +173,7 @@ def hsv_classify(img):
     """
     counts, _ = get_hsv_hist(img, num_bins=groups)
     color = max(counts, key=counts.get)
-    
+
     all_hues = cfg.HUE_VALUES.keys() + [-1]
     all_hues.sort()
 
@@ -264,59 +269,29 @@ def grasps_within_pile(color_mask):
     individual_masks = []
     focus_mask = color_mask.to_binary()
 
+    #segment by hsv
     for block_color in hue_counts.keys():
         #same threshold values for number of objects
-        if hue_counts[block_color] > cfg.HSV_MIN and hue_counts[block_color] < cfg.HSV_MAX:
+        if hue_counts[block_color] > cfg.SIZE_TOL:
             valid_pix = hue_pixels[block_color]
             obj_mask = focus_mask.mask_by_ind(np.array(valid_pix))
             individual_masks.append(obj_mask)    
-    
+
+    #for each hsv block, again separate by connectivity
     center_masses = []
     directions = []
+    masks = []
     for obj_mask in individual_masks:
+        center_masses, directions, masks = get_cluster_info(obj_mask, dist_tol, size_tol)
+        directions = [d/np.linalg.norm(d) for d in directions]
         g = Group(0, points = obj_mask.nonzero_pixels())
-        center_mass = g.center_mass()
-        direction = g.orientation()
-        direction = direction/np.linalg.norm(direction)
-        #matches endpoints of line in visualization
-        grasp_top = center_mass + direction * cfg.LINE_SIZE/2
-        grasp_bot = center_mass - direction * cfg.LINE_SIZE/2
-        if is_valid_grasp(grasp_top, focus_mask) and is_valid_grasp(grasp_bot, focus_mask):
-            center_masses.append(center_mass)
-            directions.append(direction) 
-    return center_masses, directions
 
-if __name__ == "__main__":
-    for j in range(1, 10):
-        c_img = cv2.imread("debug_imgs/samples/test_" + str(j) + ".png")
-        col_img = ColorImage(c_img)
-        main_mask = crop_img(c_img)
-        workspace_img = col_img.mask_binary(main_mask)
-
-        center_masses, directions, masks = run_connected_components(workspace_img,
-            cfg.DIST_TOL, cfg.COLOR_TOL, cfg.SIZE_TOL, viz=False)
-
-        has_multiple = [has_multiple_objects(col_img.mask_binary(m), alg="hsv") for m in masks]
-        print "has multiple objects?:", has_multiple
-
-        grasps = []
-        graspmasks = []
-        viz_info = []
-        for i in range(len(center_masses)):
-            if not has_multiple[i]:
-                cm = center_masses[i]
-                di = directions[i]
-                viz_info.append([cm, di])
-                graspmasks.append(masks[i])
-            else:
-                new_cms, new_dirs = grasps_within_pile(col_img.mask_binary(masks[i]))
-                for j in range(len(new_cms)):
-                    new_cm = new_cms[j]
-                    new_di = new_dirs[j]
-                    viz_info.append([new_cm, new_di])
-                    graspmasks.append(masks[i])
-
-        if len(graspmasks) > 0:
-            print "running grasps"
-            display_grasps(workspace_img, [v[0] for v in viz_info], [v[1] for v in viz_info],
-            name = "debug_imgs/samples/test_" + str(j) + "_h")
+        for grasp_info in zip(center_masses, directions, masks):
+            #matches endpoints of line in visualization
+            grasp_top = grasp_info[0] + grasp_info[1] * cfg.LINE_SIZE/2
+            grasp_bot = grasp_info[0] - grasp_info[1] * cfg.LINE_SIZE/2
+            if is_valid_grasp(grasp_top, focus_mask) and is_valid_grasp(grasp_bot, focus_mask):
+                center_masses.append(grasp_info[0])
+                directions.append(grasp_info[1]) 
+                masks.append(grasp_info[2])
+    return center_masses, directions, masks

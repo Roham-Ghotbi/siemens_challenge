@@ -41,31 +41,6 @@ def display_segments(img, segmented):
         plt.imshow(brick.data)
         plt.show()
 
-def restrict_focus_mask(focus_mask):
-    """cuts off top half of focus mask to remove it from
-    free space because robot range is restricted near top of workspace
-
-    Parameters
-    ----------
-    focus_mask :obj:`BinaryImage`
-        crop of workspace
-    Returns
-    -------
-    :obj:`BinaryImage`
-        crop of bottom half of workspace
-    """
-    middle_mask_pix_y = int(np.mean(focus_mask.nonzero_pixels(), axis=0)[0])
-    shape = focus_mask.shape
-    ycoords = [i for i in range(middle_mask_pix_y, int(shape[0]))]
-    xcoords = [j for j in range(0, int(shape[1]))]
-    valid_pix = []
-    for x in xcoords:
-        for y in ycoords:
-            valid_pix.append([y,x])
-    focus_mask = focus_mask.mask_by_ind(np.array(valid_pix))
-    cv2.imwrite("smallmask.png", focus_mask.data)
-    return focus_mask
-
 def get_border(img, obj_mask):
     """ Splits the object pile into two segments, and
     returns the pixels that border the two segments to be
@@ -223,14 +198,13 @@ def find_singulation(img, focus_mask, obj_mask, other_objs, alg="border"):
     :obj: `numpy.ndarray`
         1x2 vector representing the middle of singulation, if any
     """
-    # focus_mask = restrict_focus_mask(focus_mask)
 
     border = get_border(img, obj_mask)
     goal_pixel = get_goal(img, focus_mask, other_objs)
     direction, distance = get_direction(border, goal_pixel, alg=alg)
 
     mean = np.mean(border, axis=0)
-    low = obj_mask.closest_zero_pixel(mean, -1*direction, w=25)
+    low = obj_mask.closest_zero_pixel(mean, -1*direction, w=40)
     high = obj_mask.closest_zero_pixel(mean, direction)
 
     #border should go towards free space (high closer to free pixel)
@@ -260,7 +234,7 @@ def find_singulation(img, focus_mask, obj_mask, other_objs, alg="border"):
 
     return waypoints, gripper_angle, goal_pixel
 
-def display_singulation(waypoints, image, goal_pixel, name="singulate"):
+def display_singulation(waypoints, image, goal_pixel, name="debug_imgs/singulate"):
     """
     saves visualization of singulation trajectories
 
