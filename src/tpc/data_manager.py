@@ -8,17 +8,18 @@ import cPickle as pickle
 class DataManager():
     def __init__(self, collect_data):
         self.collect = collect_data
+
+        self.rollout_dir = cfg.ROLLOUT_PATH
+        dirs = [item for item in os.listdir(self.rollout_dir) if os.path.isdir(os.path.join(self.rollout_dir, item))]
+
+        #begin saving at the lowest available rollout number
+        rollout_num = 0
+        if len(dirs) > 0:
+            rollout_num = max([int(di[-1]) for di in dirs]) + 1
+
+        self.num_rollouts = rollout_num
+
         if self.collect:
-            self.rollout_dir = cfg.ROLLOUT_PATH
-            dirs = [item for item in os.listdir(self.rollout_dir) if os.path.isdir(os.path.join(self.rollout_dir, item))]
-
-            #begin saving at the lowest available rollout number
-            rollout_num = 0
-            if len(dirs) > 0:
-                rollout_num = max([int(di[-1]) for di in dirs]) + 1
-
-            self.num_rollouts = rollout_num
-
             curr_rollout_dir = self.rollout_dir + "rollout" + str(rollout_num) + "/"
             if not os.path.exists(curr_rollout_dir):
                 os.makedirs(curr_rollout_dir)
@@ -26,9 +27,6 @@ class DataManager():
             self.curr_rollout_path = curr_rollout_dir + "rollout.p"
             self.curr_rollout = []
             self.curr_traj = {}
-
-    def num_rollouts(self):
-        return self.num_rollouts
 
     def clear_traj(self):
         if self.collect:
