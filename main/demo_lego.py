@@ -177,6 +177,7 @@ class LegoDemo():
                 IPython.embed()
 
                 successes = ["?" for i in range(len(to_grasp))]
+                correct_colors = ["?" for i in range(len(to_grasp))]
                 times = [0 for i in range(len(to_grasp))]
 
                 self.dm.update_traj("success", successes)
@@ -192,6 +193,8 @@ class LegoDemo():
                     self.dm.update_traj("execute_time", times)
                     successes[i] = self.get_success("grasp")
                     self.dm.update_traj("success", successes)
+                    correct_colors[i] = self.get_success("correct color")
+                    self.dm.update_traj("color", correct_colors)
                     #write here in case of failure causing crash
                     self.dm.overwrite_traj()
             else:
