@@ -8,7 +8,7 @@ DIST_TOL = 5
 COLOR_TOL = 40
 
 #number of pixels necssary for a cluster
-SIZE_TOL = 300
+SIZE_TOL = 350
 
 #distance grasp extends
 LINE_SIZE = 40
@@ -30,11 +30,8 @@ HUE_VALUES = {90: "cyan", 120: "blue", 0: "red", 15: "orange", 30: "yellow",
 	60: "green", 35: "green-yellow"}
 
 #whether to save rollouts
-COLLECT_DATA = False
+COLLECT_DATA = True
 
-#classes of object
-#modify as needed- should correspond to class_nums used for grasping
-CLASSES = ["red lego", "blue lego", "green lego", "pencil"]
 
 #
 # path and dataset parameter

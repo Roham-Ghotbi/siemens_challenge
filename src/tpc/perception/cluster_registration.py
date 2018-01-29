@@ -6,6 +6,7 @@ from groups import Group
 from perception import ColorImage, BinaryImage
 import matplotlib.pyplot as plt
 import tpc.config.config_tpc as cfg
+from sklearn.decomposition import PCA
 
 def run_connected_components(img, dist_tol=5, color_tol=45, size_tol=300, viz=False):
     """ Generates mask for
@@ -42,6 +43,22 @@ def run_connected_components(img, dist_tol=5, color_tol=45, size_tol=300, viz=Fa
     # img = cv2.medianBlur(img, 3)
 
     center_masses, directions, masks = get_cluster_info(fg, dist_tol, size_tol)
+
+    #filter lines (marking workspace)
+    filtered_centers, filtered_dirs, filtered_masks = [], [], []
+    for info in zip(center_masses, directions, masks):
+        pca = PCA(2)
+        pca.fit(info[2].nonzero_pixels())
+
+        #much more variance in one direction indicates a line
+        v1, v2 = pca.explained_variance_[0], pca.explained_variance_[1]
+        print(v1, v2)
+        if v1 <= 10 * v2:
+            filtered_centers.append(info[0])
+            filtered_dirs.append(info[1])
+            filtered_masks.append(info[2])
+    center_masses, directions, masks = filtered_centers, filtered_dirs, filtered_masks
+
     if viz:
         display_grasps(img, center_masses, directions)
 
@@ -68,7 +85,7 @@ def display_grasps(img, center_masses, directions,name="debug_imgs/grasps"):
     :obj:`numpy.ndarray`
         visualization image
     """
-
+    box_color = (255, 0, 0)
     line_color = box_color[::-1]
     img_data = np.copy(img.data)
     for i in range(len(center_masses)):
@@ -169,9 +186,9 @@ def hsv_classify(img):
     Returns
     -------
     :integer
-        class number from 1 to 8
+        class number from 0 to 7
     """
-    counts, _ = get_hsv_hist(img, num_bins=groups)
+    counts, _ = get_hsv_hist(img)
     color = max(counts, key=counts.get)
 
     all_hues = cfg.HUE_VALUES.keys() + [-1]
@@ -278,20 +295,19 @@ def grasps_within_pile(color_mask):
             individual_masks.append(obj_mask)    
 
     #for each hsv block, again separate by connectivity
-    center_masses = []
-    directions = []
-    masks = []
+    all_center_masses = []
+    all_directions = []
+    all_masks = []
     for obj_mask in individual_masks:
-        center_masses, directions, masks = get_cluster_info(obj_mask, dist_tol, size_tol)
+        center_masses, directions, masks = get_cluster_info(obj_mask, cfg.DIST_TOL, cfg.SIZE_TOL)
         directions = [d/np.linalg.norm(d) for d in directions]
-        g = Group(0, points = obj_mask.nonzero_pixels())
 
         for grasp_info in zip(center_masses, directions, masks):
             #matches endpoints of line in visualization
             grasp_top = grasp_info[0] + grasp_info[1] * cfg.LINE_SIZE/2
             grasp_bot = grasp_info[0] - grasp_info[1] * cfg.LINE_SIZE/2
             if is_valid_grasp(grasp_top, focus_mask) and is_valid_grasp(grasp_bot, focus_mask):
-                center_masses.append(grasp_info[0])
-                directions.append(grasp_info[1]) 
-                masks.append(grasp_info[2])
-    return center_masses, directions, masks
+                all_center_masses.append(grasp_info[0])
+                all_directions.append(grasp_info[1]) 
+                all_masks.append(grasp_info[2])
+    return all_center_masses, all_directions, all_masks

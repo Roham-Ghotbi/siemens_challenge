@@ -58,8 +58,8 @@ class GraspManipulator():
         return [x,y,z],rot
 
     def execute_grasp(self, grasp_name, class_num):
-        if class_num != 1 and class_num != 2 and class_num != 3:
-            raise ValueError("currently does not support class besides 1, 2, 3") 
+        # if class_num not in range(8):
+        #     raise ValueError("currently ony supports classes 0 to 7")
         self.gripper.open_gripper()
 
         self.whole_body.end_effector_frame = 'hand_palm_link'
@@ -70,9 +70,9 @@ class GraspManipulator():
         self.gripper.close_gripper()
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),grasp_name)
 
-        #move to goal
-        dropoff_pose_name = "lego" + str(class_num)
-        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),dropoff_pose_name)
+        # #move to goal
+        # dropoff_pose_name = "lego" + str(class_num)
+        # self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),dropoff_pose_name)
         self.gripper.open_gripper()
 
     def go_to_point(self, point, rot, c_img, d_img):

@@ -46,7 +46,7 @@ class DataManager():
             #overwrites the last trajectory of the rollout
             if len(self.curr_rollout) > 0:
                 self.curr_rollout[-1] = self.curr_traj
-                pickle.dump(self.curr_rollout, open(self.current_rollout_path, "wb"))
+                pickle.dump(self.curr_rollout, open(self.curr_rollout_path, "wb"))
             else:
                 raise AssertionError("Rollout must exist before being updated")
 
@@ -56,5 +56,5 @@ class DataManager():
         curr_rollout_path = curr_rollout_dir + "rollout.p"
         if not os.path.exists(curr_rollout_dir):
             raise AssertionError("Rollout number " + str(rollout_num) + " does not exist.")
-        rollout = pickle.read(open(curr_rollout_path, "rb"))
+        rollout = pickle.load(open(curr_rollout_path, "rb"))
         return rollout

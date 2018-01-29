@@ -8,8 +8,8 @@ import cPickle as pickle
 from tpc.data_manager import DataManager
 
 if __name__ == "__main__":
-    dm = DataManager()
-    rollout = dm.read_rollout(0)
+    dm = DataManager(True)
+    rollout = dm.read_rollout(6)
     for traj in rollout:
         c_img = traj["c_img"]
         d_img = traj["d_img"]
@@ -30,3 +30,4 @@ if __name__ == "__main__":
         elif action == "singulate":
             times.append(traj["compute_singulate_time"])
             waypoints, rot, free_pix = info
+        IPython.embed()

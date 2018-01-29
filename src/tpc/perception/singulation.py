@@ -204,7 +204,7 @@ def find_singulation(img, focus_mask, obj_mask, other_objs, alg="border"):
     direction, distance = get_direction(border, goal_pixel, alg=alg)
 
     mean = np.mean(border, axis=0)
-    low = obj_mask.closest_zero_pixel(mean, -1*direction, w=40)
+    low = obj_mask.closest_zero_pixel(mean, -1*direction)
     high = obj_mask.closest_zero_pixel(mean, direction)
 
     #border should go towards free space (high closer to free pixel)
@@ -214,6 +214,10 @@ def find_singulation(img, focus_mask, obj_mask, other_objs, alg="border"):
         high, low = low, high
 
     waypoints = []
+
+    #make sure starting point is not in pile
+    low += (low - high)/np.linalg.norm(low-high) * 3.0
+
     waypoints.append(low)
 
     if alg == "free":

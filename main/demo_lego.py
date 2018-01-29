@@ -97,7 +97,7 @@ class LegoDemo():
         return
 
     def get_success(self, action):
-        print("Was " + action + " +successful? (y or n)")
+        print("Was " + action + " successful? (y or n)")
         succ = ""
         succ = raw_input()
         while not (succ == "y" or succ == "n"):
@@ -158,12 +158,12 @@ class LegoDemo():
                         to_grasp.append((grasp_cms[i], grasp_dirs[i], grasp_masks[i], grasp_pose, class_num))
 
             #impose ordering on grasps (by closest/highest y first)
-            to_grasp.sort(key=lambda g:g[0][0])
+            to_grasp.sort(key=lambda g:-1 * g[0][0])
             self.dm.update_traj("compute_grasps_time", time.time() - a)
 
             if len(to_grasp) > 0:
                 self.dm.update_traj("action", "grasp")
-                self.dm.update_traj("info", [(c[0], c[1], c[2], c[4]) for c in to_grasp])
+                self.dm.update_traj("info", [(c[0], c[1], c[2].data, c[4]) for c in to_grasp])
 
                 print "running grasps"
                 display_grasps(workspace_img, [g[0] for g in to_grasp],
@@ -197,10 +197,10 @@ class LegoDemo():
                 masks.sort(key=lambda m:len(m.nonzero_pixels()))
                 waypoints, rot, free_pix = find_singulation(col_img, main_mask, masks[0],
                     masks[1:], alg="border")
-                dm.update_traj("compute_singulate_time", time.time() - a)
+                self.dm.update_traj("compute_singulate_time", time.time() - a)
 
                 display_singulation(waypoints, workspace_img, free_pix,
-                    name = "singulate")
+                    name = "debug_imgs/singulate")
                 IPython.embed()
 
                 self.dm.update_traj("info", (waypoints, rot, free_pix))
