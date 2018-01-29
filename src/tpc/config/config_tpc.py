@@ -11,7 +11,7 @@ COLOR_TOL = 40
 SIZE_TOL = 350
 
 #distance grasp extends
-LINE_SIZE = 40
+LINE_SIZE = 50
 
 #range around grasp point used to calculate average depth value
 ZRANGE = 20
@@ -26,7 +26,7 @@ SAT_RANGE = 255.0
 VALUE_RANGE = 255.0
 
 #see https://en.wikipedia.org/wiki/HSL_and_HSV (scaled down from 360 to 180 degrees)
-HUE_VALUES = {90: "cyan", 120: "blue", 0: "red", 15: "orange", 30: "yellow", 
+HUE_VALUES = {90: "cyan", 120: "blue", 0: "red", 15: "orange", 30: "yellow",
 	60: "green", 35: "green-yellow"}
 
 #whether to save rollouts

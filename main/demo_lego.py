@@ -176,7 +176,7 @@ class LegoDemo():
                     [g[1] for g in to_grasp])
                 IPython.embed()
 
-                successes = ["n" for i in range(len(to_grasp))]
+                successes = ["?" for i in range(len(to_grasp))]
                 times = [0 for i in range(len(to_grasp))]
 
                 self.dm.update_traj("success", successes)
@@ -185,6 +185,7 @@ class LegoDemo():
 
                 for i in range(len(to_grasp)):
                     print "grasping", to_grasp[i][3]
+                    successes[i] = "n"
                     a = time.time()
                     self.gm.execute_grasp(to_grasp[i][3], to_grasp[i][4])
                     times[i] = time.time() - a

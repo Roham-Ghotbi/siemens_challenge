@@ -3,6 +3,8 @@ import IPython
 import tpc.config.config_tpc as cfg
 from hsrb_interface import geometry
 import numpy as np
+from tpc.perception.cluster_registration import class_num_to_name
+
 class GraspManipulator():
     def __init__(self, gp, gripper, whole_body, omni_base, tt):
         self.gp = gp
@@ -70,13 +72,7 @@ class GraspManipulator():
         self.gripper.close_gripper()
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),grasp_name)
 
-        all_hues = cfg.HUE_VALUES.keys() + [-1]
-        all_hues.sort()
-        color = all_hues[class_num]
-        if color == -1:
-            color_name = "black"
-        else:
-            color_name = cfg.HUE_VALUES[color]
+        color_name = class_num_to_name(class_num)
         print("Identified lego: " + color_name)
 
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), 'lego_above')

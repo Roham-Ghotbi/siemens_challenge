@@ -21,14 +21,14 @@ def run_connected_components(img, dist_tol=5, color_tol=45, size_tol=300, viz=Fa
         to be in same cluster
     color_tol : int
         minimum color distance
-        to not threshold out 
+        to not threshold out
     size_tol : int
         minimum cluster size
     viz : boolean
         if true, displays proposed grasps
     Returns
     -------
-    :obj:tuple of 
+    :obj:tuple of
         :obj:list of `numpy.ndarray`
             cluster center of masses
         :obj:list of `numpy.ndarray`
@@ -66,9 +66,9 @@ def run_connected_components(img, dist_tol=5, color_tol=45, size_tol=300, viz=Fa
 def draw_point(img, point):
     box_color = (255, 0, 0)
     box_size = 5
-    img[int(point[0] - box_size):int(point[0] + box_size), 
+    img[int(point[0] - box_size):int(point[0] + box_size),
         int(point[1] - box_size):int(point[1] + box_size)] = box_color
-    return img 
+    return img
 
 def display_grasps(img, center_masses, directions,name="debug_imgs/grasps"):
     """ Displays the proposed grasps
@@ -89,7 +89,7 @@ def display_grasps(img, center_masses, directions,name="debug_imgs/grasps"):
     img_data = np.copy(img.data)
     for i in range(len(center_masses)):
         cm = center_masses[i]
-        d = directions[i] 
+        d = directions[i]
 
         img_data = draw_point(img_data, cm)
 
@@ -141,7 +141,7 @@ def get_hsv_hist(img):
                     bin_hue = -1
                 else:
                     all_hues = cfg.HUE_VALUES.keys()
-                    bin_hue = min(all_hues, key = lambda h: 
+                    bin_hue = min(all_hues, key = lambda h:
                         dist_mod(cfg.HUE_RANGE, hue, h))
 
                 if bin_hue not in hue_counts:
@@ -162,7 +162,7 @@ def view_hsv(img):
     :obj:`ColorImg`
     """
     _, pixels = get_hsv_hist(img)
-    
+
     view = np.zeros(img.data.shape)
     for hsv_col in pixels.keys():
         points = pixels[hsv_col]
@@ -195,6 +195,16 @@ def hsv_classify(img):
 
     class_num = all_hues.index(color)
     return class_num
+
+def class_num_to_name(class_num):
+    all_hues = cfg.HUE_VALUES.keys() + [-1]
+    all_hues.sort()
+    color = all_hues[class_num]
+    if color == -1:
+        color_name = "black"
+    else:
+        color_name = cfg.HUE_VALUES[color]
+    return color_name
 
 def has_multiple_objects(img, alg="hsv"):
     """ Counts the objects in a cluster
@@ -236,7 +246,7 @@ def has_multiple_objects(img, alg="hsv"):
             if hues[block_color] > cfg.HSV_MAX:
                 n_objs += 2
             elif hues[block_color] > cfg.HSV_MIN:
-                n_objs += 1      
+                n_objs += 1
     else:
         raise ValueError("Unsupported algorithm specified. Use 'size' or 'color' or 'hsv'")
     if n_objs == 0:
@@ -244,7 +254,7 @@ def has_multiple_objects(img, alg="hsv"):
     return n_objs > 1
 
 def is_valid_grasp(point, focus_mask):
-    """ Checks that the point does not overlap 
+    """ Checks that the point does not overlap
     another object in the cluster
     Parameters
     ----------
@@ -259,7 +269,7 @@ def is_valid_grasp(point, focus_mask):
     ymid = int(point[0])
     xmid = int(point[1])
     #increase range to reduce false positives
-    check_range = 4 
+    check_range = 3
     for y in range(ymid - check_range, ymid + check_range):
         for x in range(xmid - check_range, xmid + check_range):
             if focus_mask.data[y][x] != 0:
@@ -274,7 +284,7 @@ def grasps_within_pile(color_mask):
         mask of object cluster
     Returns
     -------
-    :obj:tuple of 
+    :obj:tuple of
         :obj:list of `numpy.ndarray`
             grasp center of masses
         :obj:list of `numpy.ndarray`
@@ -291,7 +301,7 @@ def grasps_within_pile(color_mask):
         if hue_counts[block_color] > cfg.SIZE_TOL:
             valid_pix = hue_pixels[block_color]
             obj_mask = focus_mask.mask_by_ind(np.array(valid_pix))
-            individual_masks.append(obj_mask)    
+            individual_masks.append(obj_mask)
 
     #for each hsv block, again separate by connectivity
     all_center_masses = []
@@ -307,6 +317,6 @@ def grasps_within_pile(color_mask):
             grasp_bot = grasp_info[0] - grasp_info[1] * cfg.LINE_SIZE/2
             if is_valid_grasp(grasp_top, focus_mask) and is_valid_grasp(grasp_bot, focus_mask):
                 all_center_masses.append(grasp_info[0])
-                all_directions.append(grasp_info[1]) 
+                all_directions.append(grasp_info[1])
                 all_masks.append(grasp_info[2])
     return all_center_masses, all_directions, all_masks
