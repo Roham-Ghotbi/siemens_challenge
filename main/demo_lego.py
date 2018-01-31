@@ -97,13 +97,16 @@ class LegoDemo():
         return
 
     def get_success(self, action):
-        print("Was " + action + " successful? (y or n)")
-        succ = ""
-        succ = raw_input()
-        while not (succ == "y" or succ == "n"):
-            print("Enter only y or n to indicate success of " + action)
+        if cfg.COLLECT_DATA:
+            print("Was " + action + " successful? (y or n)")
+            succ = ""
             succ = raw_input()
-        return succ
+            while not (succ == "y" or succ == "n"):
+                print("Enter only y or n to indicate success of " + action)
+                succ = raw_input()
+            return succ
+        else:
+            return "x"
 
     def lego_demo(self):
 
@@ -113,7 +116,7 @@ class LegoDemo():
         if not DEBUG:
             self.gm.position_head()
 
-        time.sleep(1) #making sure the robot is finished moving
+        time.sleep(3) #making sure the robot is finished moving
         c_img = self.cam.read_color_data()
         d_img = self.cam.read_depth_data()
 

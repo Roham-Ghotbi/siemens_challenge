@@ -31,9 +31,11 @@ class GraspManipulator():
 
         pose_names = [self.get_pose(waypoint, rot, c_img, d_img) for waypoint in waypoints]
 
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.05), pose_names[0])
+
         for pose_name in pose_names:
             print "singulating", pose_name
-            self.whole_body.move_end_effector_pose(geometry.pose(z=0), pose_name)
+            self.whole_body.move_end_effector_pose(geometry.pose(z=0.01), pose_name)
 
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.05), pose_names[-1])
 
@@ -62,7 +64,7 @@ class GraspManipulator():
     def execute_grasp(self, grasp_name, class_num):
         # if class_num not in range(8):
         #     raise ValueError("currently ony supports classes 0 to 7")
-        self.gripper.open_gripper()
+        self.gripper.half_gripper()
 
         self.whole_body.end_effector_frame = 'hand_palm_link'
 

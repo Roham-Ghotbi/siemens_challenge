@@ -11,7 +11,7 @@ COLOR_TOL = 40
 SIZE_TOL = 350
 
 #distance grasp extends
-LINE_SIZE = 50
+LINE_SIZE = 40
 
 #range around grasp point used to calculate average depth value
 ZRANGE = 20

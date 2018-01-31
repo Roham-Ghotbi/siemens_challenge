@@ -23,7 +23,7 @@ if __name__ == "__main__":
     color_successes = 0
     color_attempts = 0
 
-    to_save_imgs_num = 0
+    to_save_imgs_num = 1
 
     dm = DataManager(False)
     for rnum in range(dm.num_rollouts):
@@ -32,8 +32,8 @@ if __name__ == "__main__":
         for traj in rollout:
             c_img = traj["c_img"]
             d_img = traj["d_img"]
-            c_after = traj["c_img_result"]
-            d_after = traj["d_img_result"]
+            # c_after = traj["c_img_result"]
+            # d_after = traj["d_img_result"]
             crop = traj["crop"]
             times = []
             connected_components_times.append(traj["connected_components_time"])
@@ -65,7 +65,7 @@ if __name__ == "__main__":
                 #             color_successes += 1
             elif action == "singulate":
                 compute_singulation_times.append(traj["compute_singulate_time"])
-                execute_singulation_times.append(traj["execute_time"])
+                # execute_singulation_times.append(traj["execute_time"])
                 waypoints, rot, free_pix = info
                 if rnum == to_save_imgs_num:
                     display_singulation(waypoints, ColorImage(crop), free_pix,

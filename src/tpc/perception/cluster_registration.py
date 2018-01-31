@@ -269,7 +269,7 @@ def is_valid_grasp(point, focus_mask):
     ymid = int(point[0])
     xmid = int(point[1])
     #increase range to reduce false positives
-    check_range = 3
+    check_range = 2
     for y in range(ymid - check_range, ymid + check_range):
         for x in range(xmid - check_range, xmid + check_range):
             if focus_mask.data[y][x] != 0:
@@ -293,7 +293,14 @@ def grasps_within_pile(color_mask):
     hue_counts, hue_pixels = get_hsv_hist(color_mask)
 
     individual_masks = []
-    focus_mask = color_mask.to_binary()
+
+    #color to binary
+    focus_mask = np.zeros(color_mask.data.shape[0:2])
+    for i, r in enumerate(color_mask.data):
+        for j, c in enumerate(r):
+            if c[0] > 0 or c[1] > 0 or c[2] > 0:
+                focus_mask[i][j] = 255
+    focus_mask = BinaryImage(focus_mask.astype(np.uint8))
 
     #segment by hsv
     for block_color in hue_counts.keys():
