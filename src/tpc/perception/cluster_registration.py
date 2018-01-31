@@ -39,24 +39,11 @@ def run_connected_components(img, dist_tol=5, color_tol=45, size_tol=300, viz=Fa
 
     fg = img.foreground_mask(color_tol, ignore_black=True)
     if viz:
-        cv2.imwrite("mask.png", img.data)
+        cv2.imwrite("debug_imgs/mask.png", fg.data)
     # img = cv2.medianBlur(img, 3)
 
     center_masses, directions, masks = get_cluster_info(fg, dist_tol, size_tol)
-
-    #filter lines (marking workspace)
-    filtered_centers, filtered_dirs, filtered_masks = [], [], []
-    for info in zip(center_masses, directions, masks):
-        pca = PCA(2)
-        pca.fit(info[2].nonzero_pixels())
-
-        #much more variance in one direction indicates a line
-        v1, v2 = pca.explained_variance_[0], pca.explained_variance_[1]
-        if v1 <= 10 * v2:
-            filtered_centers.append(info[0])
-            filtered_dirs.append(info[1])
-            filtered_masks.append(info[2])
-    center_masses, directions, masks = filtered_centers, filtered_dirs, filtered_masks
+    #would like to filter out clusters that are just lines here
 
     if viz:
         display_grasps(img, center_masses, directions)

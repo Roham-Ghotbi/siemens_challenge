@@ -42,7 +42,7 @@ import tpc.config.config_tpc as cfg
 from il_ros_hsr.core.rgbd_to_map import RGBD2Map
 
 if __name__ == "__main__":
-    c_img = cv2.imread("debug_imgs/attempts_singulate.png")
+    c_img = cv2.imread("debug_imgs/img7.png")
 
     main_mask = crop_img(c_img)
     col_img = ColorImage(c_img)
@@ -50,7 +50,7 @@ if __name__ == "__main__":
 
     #compute clusters (can have 1 or multiple legos)
     center_masses, directions, masks = run_connected_components(workspace_img,
-        cfg.DIST_TOL, cfg.COLOR_TOL, cfg.SIZE_TOL, viz=False)
+        cfg.DIST_TOL, cfg.COLOR_TOL, cfg.SIZE_TOL, viz=True)
     cluster_info = zip(center_masses, directions, masks)
 
     print "num masses", len(center_masses)

@@ -45,14 +45,7 @@ def crop_img(img, viz=False):
 
     # return BinaryImage(thresh_img.astype(np.uint8))
 
-    #get bounding points for largest contour
-    (cnts, _) = cv2.findContours(thresh_img.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-    contour=sorted(cnts, key = cv2.contourArea, reverse = True)[0]
-
-    #map bounding points to vertices
-    peri = cv2.arcLength(contour, True)
-    approx = cv2.approxPolyDP(contour, 0.02 * peri, True)
-    points = np.array([p[0] for p in approx])
+    points = [b[::-1] for b in BinaryImage(thresh_img).nonzero_pixels()]
 
     #get 4 corner vertices
     lower_left = min(points, key=lambda p:p[0] + p[1])

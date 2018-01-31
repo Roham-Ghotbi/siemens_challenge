@@ -58,14 +58,14 @@ if __name__ == "__main__":
                         grasp_attempts += 1
                         if s == "y":
                             grasp_successes += 1
-                # for c in traj["color"]:
-                #     if c != "?":
-                #         color_attempts += 1
-                #         if c == "y":
-                #             color_successes += 1
+                for c in traj["color"]:
+                    if c != "?":
+                        color_attempts += 1
+                        if c == "y":
+                            color_successes += 1
             elif action == "singulate":
                 compute_singulation_times.append(traj["compute_singulate_time"])
-                # execute_singulation_times.append(traj["execute_time"])
+                execute_singulation_times.append(traj["execute_time"])
                 waypoints, rot, free_pix = info
                 if rnum == to_save_imgs_num:
                     display_singulation(waypoints, ColorImage(crop), free_pix,
@@ -80,8 +80,8 @@ if __name__ == "__main__":
     print("Succeded in " + str(grasp_successes) + " out of " + str(grasp_attempts) + " grasps (" + grasp_percent + "%)")
     singulation_percent = str((100.0 * singulation_successes)/singulation_attempts)
     print("Succeded in " + str(singulation_successes) + " out of " + str(singulation_attempts) + " singulations (" + singulation_percent + "%)")
-    # color_percent = str((100.0 * color_successes)/color_attempts)
-    # print("Succeded in " + str(color_successes) + " out of " + str(color_attempts) + " color identifications (" + color_percent + "%)")
+    color_percent = str((100.0 * color_successes)/color_attempts)
+    print("Succeded in " + str(color_successes) + " out of " + str(color_attempts) + " color identifications (" + color_percent + "%)")
 
     avg = lambda times: str(sum(times)/(1.0 * len(times)))
     print("TIMES")

@@ -35,7 +35,7 @@ class GraspManipulator():
 
         for pose_name in pose_names:
             print "singulating", pose_name
-            self.whole_body.move_end_effector_pose(geometry.pose(z=0.01), pose_name)
+            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.01), pose_name)
 
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.05), pose_names[-1])
 
