@@ -126,6 +126,7 @@ class LegoDemo():
             self.dm.clear_traj()
             self.dm.update_traj("c_img", c_img)
             self.dm.update_traj("d_img", d_img)
+            self.dm.update_traj("stop_condition", "crash")
             cv2.imwrite("debug_imgs/c_img.png", c_img)
 
             main_mask = crop_img(c_img)
@@ -143,6 +144,7 @@ class LegoDemo():
             print "num masses", len(center_masses)
             if len(center_masses) == 0:
                 print("cleared workspace")
+                self.dm.update_traj("stop_condition", self.get_success("clearing table"))
                 break
 
             #for each cluster, compute grasps
@@ -236,6 +238,7 @@ class LegoDemo():
             c_img = self.cam.read_color_data()
             d_img = self.cam.read_depth_data()
 
+            self.dm.update_traj("stop_condition", "none")
             self.dm.update_traj("c_img_result", c_img)
             self.dm.update_traj("d_img_result", d_img)
             self.dm.overwrite_traj()

@@ -16,12 +16,26 @@ if __name__ == "__main__":
     execute_grasp_times = []
     execute_singulation_times = []
     compute_singulation_times = []
+
     grasp_successes = 0
     grasp_attempts = 0
+
     singulation_successes = 0
     singulation_attempts = 0
+
     color_successes = 0
     color_attempts = 0
+
+    grasp_crashes = 0
+    singulate_crashes = 0
+    completions = 0
+    false_completions = 0
+    total_stopped = 0
+
+    grasps_per_rollout = []
+    singulates_per_rollout = []
+
+    actions_before_crash = []
 
     to_save_imgs_num = 1
 
@@ -29,6 +43,8 @@ if __name__ == "__main__":
     for rnum in range(dm.num_rollouts):
         rollout = dm.read_rollout(rnum)
         trajnum = 0
+        rollout_grasps = 0
+        rollout_singulates = 0
         for traj in rollout:
             c_img = traj["c_img"]
             d_img = traj["d_img"]
@@ -43,7 +59,22 @@ if __name__ == "__main__":
             info = traj["info"]
             succ = traj["success"]
 
+
+            if "stop_condition" in traj:
+                total_stopped += 1
+                stop = traj["stop_condition"]
+                if stop == "y":
+                    completions += 1
+                elif stop == "n":
+                    false_completions += 1
+                elif stop == "crash":
+                    if action == "grasp":
+                        grasp_crashes += 1
+                    elif action =="singulate":
+                        singulate_crashes += 1
+
             if action == "grasp":
+                rollout_grasps += 1
                 execute_grasp_times += traj["execute_time"]
                 cms = []
                 dis = []
@@ -64,6 +95,7 @@ if __name__ == "__main__":
                         if c == "y":
                             color_successes += 1
             elif action == "singulate":
+                rollout_singulates += 1
                 compute_singulation_times.append(traj["compute_singulate_time"])
                 execute_singulation_times.append(traj["execute_time"])
                 waypoints, rot, free_pix = info
@@ -74,16 +106,29 @@ if __name__ == "__main__":
                 if succ == "y":
                     singulation_successes += 1
             trajnum += 1
+        grasps_per_rollout.append(rollout_grasps)
+        singulates_per_rollout.append(rollout_singulates)
 
     print("SUCCESS RATES")
-    grasp_percent = str((100.0 * grasp_successes)/grasp_attempts)
-    print("Succeded in " + str(grasp_successes) + " out of " + str(grasp_attempts) + " grasps (" + grasp_percent + "%)")
-    singulation_percent = str((100.0 * singulation_successes)/singulation_attempts)
-    print("Succeded in " + str(singulation_successes) + " out of " + str(singulation_attempts) + " singulations (" + singulation_percent + "%)")
-    color_percent = str((100.0 * color_successes)/color_attempts)
-    print("Succeded in " + str(color_successes) + " out of " + str(color_attempts) + " color identifications (" + color_percent + "%)")
+    percent = lambda succ, tot: "(" + str((100.0 * succ)/tot) + "%)"
+    succ_rate = lambda succ, tot, name:
+        "Succeded in " + str(succ) + " out of " + str(tot) + " " + name + " " + percent(succ, tot)
+    print(succ_rate(grasp_successes, grasp_attempts, "grasps"))
+    print(succ_rate(singulation_successes, singulation_attempts, "singulations"))
+    print(succ_rate(color_successes, color_attempts, "color identifications"))
+
+    print("STOPPING CONDITIONS")
+    print("Out of " + str(total) + " rollouts, " +
+        str(grasp_crashes) + " " + percent(grasp_crashes, total) + " ended in crashes after grasping, " +
+        str(singulate_crashes) + " " + percent(singulate_crashes, total) + " ended in crashes after singulating, " +
+        str(completions) + " " + percent(completions, total) + " cleared the table completely, and " +
+        str(false_completions) + " " + percent(false_completions, total) + " stopped before clearing the table.")
 
     avg = lambda times: str(sum(times)/(1.0 * len(times)))
+    print("ACTION BREAKDOWN")
+    print("average grasps per rollout: " + avg(grasps_per_rollout))
+    print("average singulations per rollout: " + avg(singulates_per_rollout))
+
     print("TIMES")
     print("average connected components time: " + avg(connected_components_times))
     print("average compute grasps time: " + avg(compute_grasps_times))
