@@ -147,6 +147,7 @@ class LegoDemo():
                 self.dm.update_traj("stop_condition", self.get_success("clearing table"))
                 break
 
+
             #for each cluster, compute grasps
             find_grasps_time = 0
             compute_grasps_time = 0
