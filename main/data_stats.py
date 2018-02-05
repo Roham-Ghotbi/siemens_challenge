@@ -47,7 +47,7 @@ if __name__ == "__main__":
 
     actions_before_crash = []
 
-    to_save_imgs_num = 8
+    to_save_imgs_num = 20
 
     dm = DataManager(False)
     for rnum in range(dm.num_rollouts):
@@ -162,10 +162,22 @@ if __name__ == "__main__":
     #easy to quantify color success 
     print(succ_rate(color_successes, color_attempts, "color identifications"))
 
+    avg = lambda times: str(sum(times)/(1.0 * len(times)))
+
     #more quantifiable metric for singulation (see description above)
-    #grasp following 0 singulation could be at start of run, or cleared up by other grasps
+    #grasp following 0 singulation could be at start of run (some runs crash -> restart has grasps)
+    #above is also the reason for ignoring singulations not followed by grasps
     print("num singulation to num successful grasps/num attempted grasps until next singulation or crash")
     print(num_singulates_to_num_grasps)
+    num_singulates_to_avg_grasps = {}
+    for num_singulates in num_singulates_to_num_grasps.keys():
+        num_grasp = num_singulates_to_num_grasps[num_singulates]
+        num_successes = [t[0] for t in num_grasp]
+        num_singulates_to_avg_grasps[num_singulates] = avg(num_successes)
+    print("num singulation to avg num successful grasps until next singulation or crash")
+    #should add variance for each (some have a lot more data)
+    print(num_singulates_to_avg_grasps)
+
 
     #just a metric of where crashes occur (might not be related to algorithm)
     if total_stopped > 0:
@@ -176,7 +188,6 @@ if __name__ == "__main__":
             str(completions) + " " + percent(completions, total_stopped) + " cleared the table completely, and " +
             str(false_completions) + " " + percent(false_completions, total_stopped) + " stopped before clearing the table.")
 
-    avg = lambda times: str(sum(times)/(1.0 * len(times)))
     print("ACTION BREAKDOWN")
     print("average grasps per rollout: " + avg(grasps_per_rollout))
     print("average singulations per rollout: " + avg(singulates_per_rollout))

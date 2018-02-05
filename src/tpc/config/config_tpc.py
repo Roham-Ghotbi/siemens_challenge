@@ -29,9 +29,12 @@ VALUE_RANGE = 255.0
 HUE_VALUES = {90: "cyan", 120: "blue", 0: "red", 15: "orange", 30: "yellow",
 	60: "green", 35: "green-yellow"}
 
-#whether to save rollouts
-COLLECT_DATA = True
+#ordered by layout on floor (left to right with close row first)
+HUES_TO_BINS = ["black", "cyan", "green-yellow", "orange", "yellow", "blue",
+	"green", "red"]
 
+#whether to save rollouts
+COLLECT_DATA = False
 
 #
 # path and dataset parameter

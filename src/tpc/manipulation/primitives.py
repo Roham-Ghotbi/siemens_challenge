@@ -62,8 +62,8 @@ class GraspManipulator():
         return [x,y,z],rot
 
     def execute_grasp(self, grasp_name, class_num):
-        # if class_num not in range(8):
-        #     raise ValueError("currently ony supports classes 0 to 7")
+        if class_num not in range(8):
+            raise ValueError("currently ony supports classes 0 to 7")
         self.gripper.half_gripper()
 
         self.whole_body.end_effector_frame = 'hand_palm_link'
@@ -77,14 +77,16 @@ class GraspManipulator():
         color_name = class_num_to_name(class_num)
         print("Identified lego: " + color_name)
 
-        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), 'lego_above')
-        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), 'lego_down')
+        lego_class_num = cfg.HUES_TO_BINS.index(color_name)
+        above_pose = "lego" + str(lego_class_num) + "above"
+        below_pose = "lego" + str(lego_class_num) + "below"
 
-        # #move to goal
-        # dropoff_pose_name = "lego" + str(class_num)
-        # self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),dropoff_pose_name)
+        self.tt.move_to_pose(self.omni_base,'lego_prep')
+
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), above_pose)
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), below_pose)
         self.gripper.open_gripper()
-        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), 'lego_above')
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), above_pose)
 
     def go_to_point(self, point, rot, c_img, d_img):
         y, x = point

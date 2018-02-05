@@ -11,10 +11,25 @@ Works best under consistent lighting (blinds closed) because white highlights on
 can be confused with the white background
 """
 
+def get_img(ind):
+	return cv2.imread("debug_imgs/new_setup_hsv/img" + str(ind) + ".png")
+
+def write_img(img, ind):
+	cv2.imwrite("debug_imgs/new_setup_hsv/img_o" + str(ind) + ".png", img)
+
+def hsv_channels(ind):
+	img = get_img(ind)
+	hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+	hue = hsv[:,:,0]
+	sat = hsv[:,:,1]
+	val = hsv[:,:,2]
+	write_img(hue, str(ind) + "hue")
+	write_img(sat, str(ind) + "sat")
+	write_img(val, str(ind) + "val")
+
 if __name__ == "__main__":
-	get_img = lambda ind: cv2.imread("debug_imgs/hsv_testing/img" + str(ind) + ".png")
-	write_img = lambda img, ind: cv2.imwrite("debug_imgs/hsv_testing/img_o" + str(ind) + ".png", img)
-	for i in range(5):
+	for i in range(9, 11):
 		img = get_img(i)
 		viz = view_hsv(ColorImage(img))
 		write_img(viz.data, i)
+	# hsv_channels(10)

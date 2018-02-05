@@ -109,6 +109,12 @@ class LegoDemo():
             return "x"
 
     def lego_demo(self):
+        self.tt.move_to_pose(self.omni_base,'lego_prep')
+        IPython.embed()
+
+        if not cfg.COLLECT_DATA:
+            print("WARNING: NO DATA IS BEING COLLECTED")
+            print("TO COLLECT DATA, CHANGE COLLECT_DATA IN config_tpc")
 
         self.dm = DataManager(cfg.COLLECT_DATA)
         self.get_new_grasp = True
@@ -129,7 +135,7 @@ class LegoDemo():
             self.dm.update_traj("stop_condition", "crash")
             cv2.imwrite("debug_imgs/c_img.png", c_img)
 
-            main_mask = crop_img(c_img)
+            main_mask = crop_img(c_img, use_preset=True)
             col_img = ColorImage(c_img)
             workspace_img = col_img.mask_binary(main_mask)
             self.dm.update_traj("crop", workspace_img.data)
@@ -145,6 +151,8 @@ class LegoDemo():
             if len(center_masses) == 0:
                 print("cleared workspace")
                 self.dm.update_traj("stop_condition", self.get_success("clearing table"))
+                self.dm.append_traj()
+                time.sleep(5)
                 break
 
 

@@ -58,6 +58,7 @@ class DataManager():
         rollout_path = self.rollout_dir
         curr_rollout_dir = self.rollout_dir + "rollout" + str(rollout_num) + "/"
         curr_rollout_path = curr_rollout_dir + "rollout.p"
+        print(curr_rollout_path)
         if not os.path.exists(curr_rollout_dir):
             raise AssertionError("Rollout number " + str(rollout_num) + " does not exist.")
         rollout = pickle.load(open(curr_rollout_path, "rb"))
