@@ -267,7 +267,7 @@ def display_singulation(waypoints, image, goal_pixel, name="debug_imgs/singulate
     plt.imshow(image.data)
     plt.plot(goal_pixel[1], goal_pixel[0], 'bo')
     plt.axis('off')
-
+    plt.show()
     plt.savefig(name + ".png")
 
 if __name__ == "__main__":

@@ -83,6 +83,9 @@ def display_grasps(img, center_masses, directions,name="debug_imgs/grasps"):
         p0 = tuple((cm - d * cfg.LINE_SIZE/2)[::-1].astype('uint32'))
         p1 = tuple((cm + d * cfg.LINE_SIZE/2)[::-1].astype('uint32'))
         cv2.line(img_data, p0, p1, line_color, 2)
+    plt.figure()
+    plt.imshow(img_data)
+    plt.show()
     cv2.imwrite(name + ".png", img_data)
 
 def dist_mod(m, a, b):

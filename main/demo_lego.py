@@ -109,9 +109,6 @@ class LegoDemo():
             return "x"
 
     def lego_demo(self):
-        self.tt.move_to_pose(self.omni_base,'lego_prep')
-        IPython.embed()
-
         if not cfg.COLLECT_DATA:
             print("WARNING: NO DATA IS BEING COLLECTED")
             print("TO COLLECT DATA, CHANGE COLLECT_DATA IN config_tpc")
@@ -188,7 +185,7 @@ class LegoDemo():
                 print "running grasps"
                 display_grasps(workspace_img, [g[0] for g in to_grasp],
                     [g[1] for g in to_grasp])
-                IPython.embed()
+                # IPython.embed()
 
                 successes = ["?" for i in range(len(to_grasp))]
                 correct_colors = ["?" for i in range(len(to_grasp))]
@@ -225,7 +222,7 @@ class LegoDemo():
 
                 display_singulation(waypoints, workspace_img, free_pix,
                     name = "debug_imgs/singulate")
-                IPython.embed()
+                # IPython.embed()
 
                 self.dm.update_traj("info", (waypoints, rot, free_pix))
                 self.dm.update_traj("success", "n")
@@ -243,7 +240,7 @@ class LegoDemo():
             self.whole_body.move_to_go()
             self.gm.position_head()
 
-            time.sleep(1) #making sure the robot is finished moving
+            time.sleep(3) #making sure the robot is finished moving
             c_img = self.cam.read_color_data()
             d_img = self.cam.read_depth_data()
 

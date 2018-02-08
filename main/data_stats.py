@@ -47,7 +47,7 @@ if __name__ == "__main__":
 
     actions_before_crash = []
 
-    to_save_imgs_num = 20
+    to_save_imgs_num = -1 #make it not pltshow
 
     dm = DataManager(False)
     for rnum in range(dm.num_rollouts):
@@ -64,7 +64,9 @@ if __name__ == "__main__":
         for traj_ind, traj in enumerate(rollout):
             c_img = traj["c_img"]
             d_img = traj["d_img"]
-            # c_after = traj["c_img_result"]
+            c_after = None
+            if "c_img_result" in traj:
+                c_after = traj["c_img_result"]
             # d_after = traj["d_img_result"]
             crop = traj["crop"]
             times = []
@@ -112,6 +114,10 @@ if __name__ == "__main__":
                         curr_grasp_attempts += 1
                         if s == "y":
                             curr_grasp_successes += 1
+                        # else:
+                        #     c_info = display_grasps(ColorImage(c_img), cms, dis, name="debug_imgs/grasp_fails/")
+                        #     failure_data = (c_img, c_after, c_info)
+                        #     grasp_failures.append(failure_data)
                         if c == "y":
                             color_successes += 1
                 grasp_attempts += curr_grasp_attempts
@@ -152,6 +158,7 @@ if __name__ == "__main__":
         grasps_per_rollout.append(rollout_grasps)
         singulates_per_rollout.append(rollout_singulates)
 
+
     print("SUCCESS RATES")
     percent = lambda succ, tot: "(" + str((100.0 * succ)/tot) + "%)"
     succ_rate = lambda succ, tot, name: "Succeded in " + str(succ) + " out of " + str(tot) + " " + name + " " + percent(succ, tot)
@@ -173,8 +180,9 @@ if __name__ == "__main__":
     for num_singulates in num_singulates_to_num_grasps.keys():
         num_grasp = num_singulates_to_num_grasps[num_singulates]
         num_successes = [t[0] for t in num_grasp]
-        num_singulates_to_avg_grasps[num_singulates] = avg(num_successes)
-    print("num singulation to avg num successful grasps until next singulation or crash")
+        num_trials = len(num_successes)
+        num_singulates_to_avg_grasps[num_singulates] = (avg(num_successes), num_trials)
+    print("num singulation to (avg num successful grasps until next singulation or crash, num trials)")
     #should add variance for each (some have a lot more data)
     print(num_singulates_to_avg_grasps)
 
@@ -182,13 +190,14 @@ if __name__ == "__main__":
     #just a metric of where crashes occur (might not be related to algorithm)
     if total_stopped > 0:
         print("STOPPING CONDITIONS")
-        print("Out of " + str(total_stopped) + " rollouts, " +
+        print("Out of " + str(total_stopped) + " rollouts with crash information, " +
             str(grasp_crashes) + " " + percent(grasp_crashes, total_stopped) + " ended in crashes after grasping, " +
             str(singulate_crashes) + " " + percent(singulate_crashes, total_stopped) + " ended in crashes after singulating, " +
             str(completions) + " " + percent(completions, total_stopped) + " cleared the table completely, and " +
             str(false_completions) + " " + percent(false_completions, total_stopped) + " stopped before clearing the table.")
 
     print("ACTION BREAKDOWN")
+    print("number of rollouts: " + str(dm.num_rollouts - 1))
     print("average grasps per rollout: " + avg(grasps_per_rollout))
     print("average singulations per rollout: " + avg(singulates_per_rollout))
     print("average actions before crashs: " + avg(actions_before_crash))

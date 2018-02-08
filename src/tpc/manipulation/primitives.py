@@ -35,7 +35,7 @@ class GraspManipulator():
 
         for pose_name in pose_names:
             print "singulating", pose_name
-            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.01), pose_name)
+            self.whole_body.move_end_effector_pose(geometry.pose(z=0), pose_name)
 
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.05), pose_names[-1])
 
@@ -62,6 +62,12 @@ class GraspManipulator():
         return [x,y,z],rot
 
     def execute_grasp(self, grasp_name, class_num):
+        """
+        Picks up lego at target grasp
+        Delivers lego to target bin by color
+            To avoid collision errors, moves base in 
+            front of bin before moving gripper forward to deposit lego
+        """
         if class_num not in range(8):
             raise ValueError("currently ony supports classes 0 to 7")
         self.gripper.half_gripper()
@@ -70,7 +76,7 @@ class GraspManipulator():
 
         #before lowering gripper, go directly above grasp position
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),grasp_name)
-        self.whole_body.move_end_effector_pose(geometry.pose(),grasp_name)
+        self.whole_body.move_end_effector_pose(geometry.pose(z=0.01),grasp_name)
         self.gripper.close_gripper()
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),grasp_name)
 
@@ -78,15 +84,21 @@ class GraspManipulator():
         print("Identified lego: " + color_name)
 
         lego_class_num = cfg.HUES_TO_BINS.index(color_name)
+        prep_pose = "lego" + str(lego_class_num) + "prep"
+        close_pose = "lego" + str(lego_class_num) + "close"
         above_pose = "lego" + str(lego_class_num) + "above"
         below_pose = "lego" + str(lego_class_num) + "below"
 
-        self.tt.move_to_pose(self.omni_base,'lego_prep')
+        # self.whole_body.move_to_go()
+
+        self.tt.move_to_pose(self.omni_base,close_pose)
 
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), above_pose)
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), below_pose)
         self.gripper.open_gripper()
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), above_pose)
+
+        self.tt.move_to_pose(self.omni_base,close_pose)
 
     def go_to_point(self, point, rot, c_img, d_img):
         y, x = point
