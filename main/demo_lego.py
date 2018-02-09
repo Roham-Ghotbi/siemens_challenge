@@ -170,6 +170,7 @@ class LegoDemo():
                     for i in range(len(grasp_cms)):
                         pose,rot = self.gm.compute_grasp(grasp_cms[i], grasp_dirs[i], d_img)
                         grasp_pose = self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=workspace_img.data)
+                        # pre_pose = self.gripper.get_grasp_pose(pose[0], pose[1] + 200, pose[2], rot, c_img=workspace_img.data)
                         class_num = hsv_classify(col_img.mask_binary(grasp_masks[i]))
                         to_grasp.append((grasp_cms[i], grasp_dirs[i], grasp_masks[i], grasp_pose, class_num))
                     compute_grasps_time += time.time() - a

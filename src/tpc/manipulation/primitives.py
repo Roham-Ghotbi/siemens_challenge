@@ -84,21 +84,14 @@ class GraspManipulator():
         print("Identified lego: " + color_name)
 
         lego_class_num = cfg.HUES_TO_BINS.index(color_name)
-        prep_pose = "lego" + str(lego_class_num) + "prep"
-        close_pose = "lego" + str(lego_class_num) + "close"
+
         above_pose = "lego" + str(lego_class_num) + "above"
         below_pose = "lego" + str(lego_class_num) + "below"
-
-        # self.whole_body.move_to_go()
-
-        self.tt.move_to_pose(self.omni_base,close_pose)
 
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), above_pose)
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), below_pose)
         self.gripper.open_gripper()
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), above_pose)
-
-        self.tt.move_to_pose(self.omni_base,close_pose)
 
     def go_to_point(self, point, rot, c_img, d_img):
         y, x = point
