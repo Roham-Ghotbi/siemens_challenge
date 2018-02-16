@@ -7,6 +7,7 @@ from perception import ColorImage, BinaryImage
 import matplotlib.pyplot as plt
 import tpc.config.config_tpc as cfg
 from sklearn.decomposition import PCA
+import time
 
 def run_connected_components(img, dist_tol=5, color_tol=45, size_tol=300, viz=False):
     """ Generates mask for
@@ -85,9 +86,9 @@ def display_grasps(img, center_masses, directions,name="debug_imgs/grasps"):
         cv2.line(img_data, p0, p1, line_color, 2)
     plt.figure()
     plt.imshow(img_data)
-    plt.show()
     cv2.imwrite(name + ".png", img_data)
-
+    if cfg.QUERY:
+        plt.show()
 def dist_mod(m, a, b):
     """
     returns shortest distance between a and b under mod m
@@ -96,7 +97,7 @@ def dist_mod(m, a, b):
     if diff < m/2:
         return diff
     else:
-        return m - diff
+        return m - diff  
 
 def get_hsv_hist(img):
     """ Separates image into bins by HSV and creates histograms
@@ -280,18 +281,23 @@ def grasps_within_pile(color_mask):
         :obj:list of `numpy.ndarray`
             grasp angles
     """
+    # print "inside the grasps"
+    a = time.time()
     hue_counts, hue_pixels = get_hsv_hist(color_mask)
+    hsv_hist_time = time.time() - a
 
     individual_masks = []
-
+    a = time.time()
     #color to binary
-    focus_mask = np.zeros(color_mask.data.shape[0:2])
-    for i, r in enumerate(color_mask.data):
-        for j, c in enumerate(r):
-            if c[0] > 0 or c[1] > 0 or c[2] > 0:
-                focus_mask[i][j] = 255
-    focus_mask = BinaryImage(focus_mask.astype(np.uint8))
-
+    focus_mask = color_mask.to_binary()
+    #focus_mask = np.zeros(color_mask.data.shape[0:2])
+    #for i, r in enumerate(color_mask.data):
+    #    for j, c in enumerate(r):
+    #        if c[0] > 0 or c[1] > 0 or c[2] > 0:
+    #            focus_mask[i][j] = 255
+    #focus_mask = BinaryImage(focus_mask.astype(np.uint8))
+    col_to_bin_time = time.time() - a
+    a = time.time()
     #segment by hsv
     for block_color in hue_counts.keys():
         #same threshold values for number of objects
@@ -299,8 +305,10 @@ def grasps_within_pile(color_mask):
             valid_pix = hue_pixels[block_color]
             obj_mask = focus_mask.mask_by_ind(np.array(valid_pix))
             individual_masks.append(obj_mask)
+    hsv_seg_time = time.time() - a
 
     #for each hsv block, again separate by connectivity
+    a = time.time()
     all_center_masses = []
     all_directions = []
     all_masks = []
@@ -316,4 +324,8 @@ def grasps_within_pile(color_mask):
                 all_center_masses.append(grasp_info[0])
                 all_directions.append(grasp_info[1])
                 all_masks.append(grasp_info[2])
+    seperate_time = time.time() - a
+    lis = [hsv_hist_time, col_to_bin_time, hsv_seg_time, seperate_time]
+    #IPython.embed()
+
     return all_center_masses, all_directions, all_masks
