@@ -8,13 +8,7 @@ DIST_TOL = 5
 COLOR_TOL = 40
 
 #number of pixels necssary for a cluster
-SIZE_TOL = 300
-
-#number of pixels in hsv bin to be 1 object
-HSV_MIN = 300
-
-#number of pixels in hsv bin to be > 1 object
-HSV_MAX = 1500
+SIZE_TOL = 350
 
 #distance grasp extends
 LINE_SIZE = 40
@@ -23,19 +17,33 @@ LINE_SIZE = 40
 ZRANGE = 20
 
 #cv2 range for HSV hue values
-HUE_RANGE = 180
+HUE_RANGE = 180.0
 
-#BELOW ARE PARAMETERS FROM BED_MAKING
-#remove if unneeded for tpc
+#cv2 range for HSV sat values
+SAT_RANGE = 255.0
+
+#cv2 range for HSV value values
+VALUE_RANGE = 255.0
+
+#see https://en.wikipedia.org/wiki/HSL_and_HSV (scaled down from 360 to 180 degrees)
+HUE_VALUES = {90: "cyan", 120: "blue", 0: "red", 10: "orange", 30: "yellow",
+	60: "green", 35: "green-yellow"}
+
+#ordered by layout on floor (top to bottom with close row first)
+HUES_TO_BINS = ["orange", "green-yellow", "cyan", "black", "red", "green", "blue", "yellow"]
+
+#whether to save rollouts
+COLLECT_DATA = True
+#whether to show plots/ask for success
+QUERY = False
 #
 # path and dataset parameter
 #
-
 ROOT_DIR = '/media/autolab/1tb/data/'
+DATA_PATH = ROOT_DIR + 'tpc/'
 
+#BELOW INCLUDES PARAMETERS FROM BED_MAKING
 NET_NAME = '07_31_00_09_46save.ckpt-30300'
-DATA_PATH = ROOT_DIR + 'bed_rcnn/'
-
 
 USE_DART = False
 
@@ -81,7 +89,7 @@ WEIGHTS_FILE = None
 
 # WEIGHTS_FILE = os.path.join(DATA_PATH, 'weights', 'YOLO_small.ckpt')
 
-CLASSES = ['yes','no']
+# CLASSES = ['yes','no']
 
 # #CLASSES = ['aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus',
 #            'car', 'cat', 'chair', 'cow', 'diningtable', 'dog', 'horse',

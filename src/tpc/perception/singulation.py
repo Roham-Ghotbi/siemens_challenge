@@ -1,4 +1,4 @@
-# To run this test script run python src/tpc/perception/singulation.py 
+# To run this test script run python src/tpc/perception/singulation.py
 # from the root of the repo
 
 import matplotlib.pyplot as plt
@@ -10,6 +10,7 @@ import numpy as np
 from sklearn.decomposition import PCA
 import cv2
 import IPython
+import tpc.config.config_tpc as cfg
 
 def display_border(img, border):
     """ helper to display the border between the segments
@@ -41,33 +42,8 @@ def display_segments(img, segmented):
         plt.imshow(brick.data)
         plt.show()
 
-def restrict_focus_mask(focus_mask):
-    """cuts off top half of focus mask to remove it from
-    free space because robot range is restricted near top of workspace
-    
-    Parameters
-    ----------
-    focus_mask :obj:`BinaryImage`
-        crop of workspace
-    Returns
-    -------
-    :obj:`BinaryImage`
-        crop of bottom half of workspace
-    """
-    middle_mask_pix_y = int(np.mean(focus_mask.nonzero_pixels(), axis=0)[0])
-    shape = focus_mask.shape 
-    ycoords = [i for i in range(middle_mask_pix_y, int(shape[0]))]
-    xcoords = [j for j in range(0, int(shape[1]))]
-    valid_pix = []
-    for x in xcoords:
-        for y in ycoords:
-            valid_pix.append([y,x])
-    focus_mask = focus_mask.mask_by_ind(np.array(valid_pix))
-    cv2.imwrite("smallmask.png", focus_mask.data)
-    return focus_mask
-
 def get_border(img, obj_mask):
-    """ Splits the object pile into two segments, and 
+    """ Splits the object pile into two segments, and
     returns the pixels that border the two segments to be
     used as the pushing direction
 
@@ -76,7 +52,7 @@ def get_border(img, obj_mask):
     img :obj:`ColorImage`
         original image
     obj_mask :obj:`BinaryImage`
-        crop of object cluster 
+        crop of object cluster
     Returns
     -------
     :obj:`numpy.ndarray`
@@ -94,12 +70,12 @@ def get_border(img, obj_mask):
         print("no boundary points")
         border = obj_mask.nonzero_pixels()
 
-    return border 
+    return border
 
 def get_goal(img, focus_mask, other_objs):
     """ Finds the goal pixel, which is the point
-    in the workspace furthest from all walls and 
-    other object clusters 
+    in the workspace furthest from all walls and
+    other object clusters
 
     Parameters
     ----------
@@ -123,7 +99,7 @@ def get_goal(img, focus_mask, other_objs):
 def get_direction(border, goal_pixel, alg="border", max_angle=np.pi/6.0):
     """ Finds the direction in which to push the
     pile to separate it the most using the direction
-    of the border pixels 
+    of the border pixels
 
     Parameters
     ----------
@@ -135,15 +111,15 @@ def get_direction(border, goal_pixel, alg="border", max_angle=np.pi/6.0):
         `border`: push along border
         `free`: push along border with bias to
         free space
-    max_angle :float 
+    max_angle :float
         maximum angle bias towards free space
     Returns
     -------
     :obj:`numpy.ndarray`
-        1x2 vector pointing in the direction in which the 
+        1x2 vector pointing in the direction in which the
         robot should singulate
     :obj: int
-        distance the robot should push to go through the 
+        distance the robot should push to go through the
         entire pile
     """
     #optimal pushing direction
@@ -177,7 +153,7 @@ def get_direction(border, goal_pixel, alg="border", max_angle=np.pi/6.0):
                                 np.sin(max_angle) * pca.components_[1]
             right_border_dir = np.cos(-max_angle) * pca.components_[0] + \
                                 np.sin(-max_angle) * pca.components_[1]
-            
+
             left_alignment = np.abs(goal_dir.dot(left_border_dir))
             right_alignment = np.abs(goal_dir.dot(right_border_dir))
             if left_alignment > right_alignment:
@@ -193,7 +169,7 @@ def get_direction(border, goal_pixel, alg="border", max_angle=np.pi/6.0):
     return push_dir, distance
 
 def find_singulation(img, focus_mask, obj_mask, other_objs, alg="border"):
-    """ Finds the direction in which the robot should push 
+    """ Finds the direction in which the robot should push
     the pile to separate it the most, and the gripper angle
     which will keep objects farthest from other piles
 
@@ -223,38 +199,50 @@ def find_singulation(img, focus_mask, obj_mask, other_objs, alg="border"):
     :obj: `numpy.ndarray`
         1x2 vector representing the middle of singulation, if any
     """
-    focus_mask = restrict_focus_mask(focus_mask)
 
     border = get_border(img, obj_mask)
     goal_pixel = get_goal(img, focus_mask, other_objs)
+
     direction, distance = get_direction(border, goal_pixel, alg=alg)
 
     mean = np.mean(border, axis=0)
-    low = obj_mask.closest_zero_pixel(mean, -1*direction, w=25)
+    low = obj_mask.closest_zero_pixel(mean, -1*direction)
     high = obj_mask.closest_zero_pixel(mean, direction)
 
+    #border should go towards free space (high closer to free pixel)
+    low_d = np.linalg.norm(goal_pixel - low)
+    high_d = np.linalg.norm(goal_pixel - high)
+    if low_d < high_d:
+        high, low = low, high
+
     waypoints = []
+
+    #make sure starting point is not in pile
+    low += (low - high)/np.linalg.norm(low-high) * 1.5
+
     waypoints.append(low)
 
     if alg == "free":
         waypoints.append(high)
-        push_dir = high - low 
+        push_dir = high - low
         push_angle = np.arctan2(push_dir[0], push_dir[1])
         #want gripper perpendicular to push
         gripper_angle = push_angle + np.pi/2.0
     elif alg == "border":
         waypoints.append(low * 1.0/4.0 + high * 3.0/4.0)
-        goal_dir = goal_pixel - mean
-        goal_dir = goal_dir / np.linalg.norm(goal_dir)
-        towards_free = obj_mask.closest_zero_pixel(mean, goal_dir, w=25)
-        waypoints.append(towards_free)
-        gripper_angle = 0
+        goal_in_pile = goal_pixel in obj_mask.nonzero_pixels()
+        if not goal_in_pile:
+            goal_dir = goal_pixel - mean
+            goal_dir = goal_dir / np.linalg.norm(goal_dir)
+            towards_free = obj_mask.closest_zero_pixel(mean, goal_dir, w=40)
+            waypoints.append(towards_free)
+            gripper_angle = 0
     else:
         raise ValueError("Unsupported algorithm specified. Use `border` or `free`.")
 
     return waypoints, gripper_angle, goal_pixel
 
-def display_singulation(waypoints, image, goal_pixel, name="singulate"):
+def display_singulation(waypoints, image, goal_pixel, name="debug_imgs/singulate"):
     """
     saves visualization of singulation trajectories
 
@@ -283,15 +271,16 @@ def display_singulation(waypoints, image, goal_pixel, name="singulate"):
     plt.imshow(image.data)
     plt.plot(goal_pixel[1], goal_pixel[0], 'bo')
     plt.axis('off')
-
-    plt.savefig(name + ".png")
+    plt.savefig(name + ".png")  
+    if cfg.QUERY:
+        plt.show()
 
 if __name__ == "__main__":
     files = [
-            "data/example_images/frame_40_10.png", 
-            "data/example_images/frame_40_11.png", 
-            "data/example_images/frame_40_12.png", 
-            "data/example_images/frame_40_13.png", 
+            "data/example_images/frame_40_10.png",
+            "data/example_images/frame_40_11.png",
+            "data/example_images/frame_40_12.png",
+            "data/example_images/frame_40_13.png",
             "data/example_images/frame_40_14.png"
         ]
     for file in files:

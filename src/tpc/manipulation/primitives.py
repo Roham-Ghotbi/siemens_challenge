@@ -3,6 +3,8 @@ import IPython
 import tpc.config.config_tpc as cfg
 from hsrb_interface import geometry
 import numpy as np
+from tpc.perception.cluster_registration import class_num_to_name
+
 class GraspManipulator():
     def __init__(self, gp, gripper, whole_body, omni_base, tt):
         self.gp = gp
@@ -28,6 +30,8 @@ class GraspManipulator():
         self.gripper.close_gripper()
 
         pose_names = [self.get_pose(waypoint, rot, c_img, d_img) for waypoint in waypoints]
+
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.05), pose_names[0])
 
         for pose_name in pose_names:
             print "singulating", pose_name
@@ -58,22 +62,36 @@ class GraspManipulator():
         return [x,y,z],rot
 
     def execute_grasp(self, grasp_name, class_num):
-        if class_num != 1 and class_num != 2 and class_num != 3:
-            raise ValueError("currently does not support class besides 1, 2, 3") 
-        self.gripper.open_gripper()
+        """
+        Picks up lego at target grasp
+        Delivers lego to target bin by color
+            To avoid collision errors, moves base in 
+            front of bin before moving gripper forward to deposit lego
+        """
+        if class_num not in range(8):
+            raise ValueError("currently ony supports classes 0 to 7")
+        self.gripper.half_gripper()
 
         self.whole_body.end_effector_frame = 'hand_palm_link'
 
         #before lowering gripper, go directly above grasp position
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),grasp_name)
-        self.whole_body.move_end_effector_pose(geometry.pose(),grasp_name)
+        self.whole_body.move_end_effector_pose(geometry.pose(z=0.01),grasp_name)
         self.gripper.close_gripper()
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),grasp_name)
 
-        #move to goal
-        dropoff_pose_name = "lego" + str(class_num)
-        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),dropoff_pose_name)
+        color_name = class_num_to_name(class_num)
+        print("Identified lego: " + color_name)
+
+        lego_class_num = cfg.HUES_TO_BINS.index(color_name)
+
+        above_pose = "lego" + str(lego_class_num) + "above"
+        below_pose = "lego" + str(lego_class_num) + "below"
+
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), above_pose)
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), below_pose)
         self.gripper.open_gripper()
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), above_pose)
 
     def go_to_point(self, point, rot, c_img, d_img):
         y, x = point
