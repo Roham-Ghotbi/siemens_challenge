@@ -4,7 +4,7 @@ import IPython
 import cv2
 import os
 import cPickle as pickle
-from perception import ColorImage, BinaryImage
+from tpc.perception.image import ColorImage, BinaryImage
 from tpc.perception.cluster_registration import display_grasps
 from tpc.perception.singulation import display_singulation
 from tpc.data_manager import DataManager
@@ -48,7 +48,8 @@ if __name__ == "__main__":
     actions_before_crash = []
 
     to_save_imgs_num = -1 #make it not pltshow
-
+    fail_num = 0
+    fail_num_singulate = 0
     dm = DataManager(False)
     for rnum in range(dm.num_rollouts):
         rollout = dm.read_rollout(rnum)
@@ -61,6 +62,8 @@ if __name__ == "__main__":
         curr_grasp_sequence_s = 0
         curr_grasp_sequence_t = 0
         last_was_grasp = True
+
+        prev_singulate_info = None
         for traj_ind, traj in enumerate(rollout):
             c_img = traj["c_img"]
             d_img = traj["d_img"]
@@ -104,8 +107,8 @@ if __name__ == "__main__":
                     cm, di, mask, class_num = grasp
                     cms.append(cm)
                     dis.append(di)
-                if rnum == to_save_imgs_num:
-                    display_grasps(ColorImage(c_img), cms, dis, name="debug_imgs/rollout_imgs/r" + str(trajnum))
+                # if rnum == to_save_imgs_num:
+                #     display_grasps(ColorImage(c_img), cms, dis, name="debug_imgs/rollout_imgs/r" + str(trajnum))
                 curr_grasp_successes = 0
                 curr_grasp_attempts = 0
                 for i, s in enumerate(succ):
@@ -114,10 +117,16 @@ if __name__ == "__main__":
                         curr_grasp_attempts += 1
                         if s == "y":
                             curr_grasp_successes += 1
-                        # else:
-                        #     c_info = display_grasps(ColorImage(c_img), cms, dis, name="debug_imgs/grasp_fails/")
-                        #     failure_data = (c_img, c_after, c_info)
-                        #     grasp_failures.append(failure_data)
+                        else:
+                            curr_dir = "debug_imgs/grasp_fails/" + str(fail_num) + "/"
+                            if not os.path.exists(curr_dir):
+                                os.makedirs(curr_dir)
+                            cv2.imwrite(curr_dir + "orig.png", c_img)
+                            display_grasps(ColorImage(c_img), cms, dis, name=curr_dir + "grasps")
+                            # c_info = display_grasps(ColorImage(c_img), [cms[i]], [dis[i]], name=curr_dir + "grasps")
+                            if c_after is not None:
+                                cv2.imwrite(curr_dir + "after.png", c_after)
+                            fail_num += 1
                         if c == "y":
                             color_successes += 1
                 grasp_attempts += curr_grasp_attempts
@@ -126,7 +135,7 @@ if __name__ == "__main__":
                 grasp_successes += curr_grasp_successes
                 curr_grasp_sequence_t += curr_grasp_attempts
                 curr_grasp_sequence_s += curr_grasp_successes
-
+                prev_singulate_info = None
             elif action == "singulate":
                 if last_was_grasp and curr_grasp_sequence_t > 0:
                     if curr_singulate_sequence not in num_singulates_to_num_grasps:
@@ -135,6 +144,20 @@ if __name__ == "__main__":
                     curr_grasp_sequence_s = 0
                     curr_grasp_sequence_t = 0
                     curr_singulate_sequence = 0
+                if not last_was_grasp and prev_singulate_info is not None:
+                    #the number of failure recorded here may be more than
+                    #the number of non-0,1 singulation sequences recorded elsewhere
+                    #because these sequences do not have to end in a grasp=
+                    prev_img, prev_after, prev_info, prev_crop = prev_singulate_info
+                    curr_dir = "debug_imgs/singulate_fails/" + str(fail_num_singulate) + "/"
+                    if not os.path.exists(curr_dir):
+                        os.makedirs(curr_dir)
+                    cv2.imwrite(curr_dir + "orig.png", prev_img)
+                    prev_way, prev_rot, prev_free = prev_info
+                    display_singulation(prev_way, ColorImage(prev_crop), prev_free, name=curr_dir + "singulations")
+                    if prev_after is not None:
+                        cv2.imwrite(curr_dir + "after.png", prev_after)
+                    fail_num_singulate += 1
                 last_was_grasp = False
                 curr_singulate_sequence += 1
                 rollout_singulates += 1
@@ -142,12 +165,13 @@ if __name__ == "__main__":
                 if "execute_time" in traj:
                     execute_singulation_times.append(traj["execute_time"])
                 waypoints, rot, free_pix = info
-                if rnum == to_save_imgs_num:
-                    display_singulation(waypoints, ColorImage(crop), free_pix,
-                        name = "debug_imgs/rollout_imgs/r" + str(trajnum))
+                # if rnum == to_save_imgs_num:
+                #     display_singulation(waypoints, ColorImage(crop), free_pix,
+                #         name = "debug_imgs/rollout_imgs/r" + str(trajnum))
                 singulation_attempts += 1
                 if succ == "y":
                     singulation_successes += 1
+                prev_singulate_info = (c_img, c_after, info, crop)
             trajnum += 1
         #if grasp followed by crash
         if curr_grasp_sequence_t > 0:
@@ -166,7 +190,7 @@ if __name__ == "__main__":
     print(succ_rate(grasp_successes, grasp_attempts, "grasps"))
     #singulation success somewhat hard to quantify- yes if it seems to separate a pile into multiple pile
     print(succ_rate(singulation_successes, singulation_attempts, "singulations"))
-    #easy to quantify color success 
+    #easy to quantify color success
     print(succ_rate(color_successes, color_attempts, "color identifications"))
 
     avg = lambda times: str(sum(times)/(1.0 * len(times)))
