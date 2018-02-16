@@ -26,16 +26,16 @@ SAT_RANGE = 255.0
 VALUE_RANGE = 255.0
 
 #see https://en.wikipedia.org/wiki/HSL_and_HSV (scaled down from 360 to 180 degrees)
-HUE_VALUES = {90: "cyan", 120: "blue", 0: "red", 15: "orange", 30: "yellow",
+HUE_VALUES = {90: "cyan", 120: "blue", 0: "red", 10: "orange", 30: "yellow",
 	60: "green", 35: "green-yellow"}
 
-#ordered by layout on floor (left to right with close row first)
-HUES_TO_BINS = ["black", "cyan", "green-yellow", "orange", "yellow", "blue",
-	"green", "red"]
+#ordered by layout on floor (top to bottom with close row first)
+HUES_TO_BINS = ["orange", "green-yellow", "cyan", "black", "red", "green", "blue", "yellow"]
 
 #whether to save rollouts
-COLLECT_DATA = False
-
+COLLECT_DATA = True
+#whether to show plots/ask for success
+QUERY = False
 #
 # path and dataset parameter
 #

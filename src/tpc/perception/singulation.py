@@ -10,6 +10,7 @@ import numpy as np
 from sklearn.decomposition import PCA
 import cv2
 import IPython
+import tpc.config.config_tpc as cfg
 
 def display_border(img, border):
     """ helper to display the border between the segments
@@ -201,6 +202,7 @@ def find_singulation(img, focus_mask, obj_mask, other_objs, alg="border"):
 
     border = get_border(img, obj_mask)
     goal_pixel = get_goal(img, focus_mask, other_objs)
+
     direction, distance = get_direction(border, goal_pixel, alg=alg)
 
     mean = np.mean(border, axis=0)
@@ -216,7 +218,7 @@ def find_singulation(img, focus_mask, obj_mask, other_objs, alg="border"):
     waypoints = []
 
     #make sure starting point is not in pile
-    low += (low - high)/np.linalg.norm(low-high) * 5.0
+    low += (low - high)/np.linalg.norm(low-high) * 1.5
 
     waypoints.append(low)
 
@@ -228,11 +230,13 @@ def find_singulation(img, focus_mask, obj_mask, other_objs, alg="border"):
         gripper_angle = push_angle + np.pi/2.0
     elif alg == "border":
         waypoints.append(low * 1.0/4.0 + high * 3.0/4.0)
-        goal_dir = goal_pixel - mean
-        goal_dir = goal_dir / np.linalg.norm(goal_dir)
-        towards_free = obj_mask.closest_zero_pixel(mean, goal_dir, w=40)
-        waypoints.append(towards_free)
-        gripper_angle = 0
+        goal_in_pile = goal_pixel in obj_mask.nonzero_pixels()
+        if not goal_in_pile:
+            goal_dir = goal_pixel - mean
+            goal_dir = goal_dir / np.linalg.norm(goal_dir)
+            towards_free = obj_mask.closest_zero_pixel(mean, goal_dir, w=40)
+            waypoints.append(towards_free)
+            gripper_angle = 0
     else:
         raise ValueError("Unsupported algorithm specified. Use `border` or `free`.")
 
@@ -267,8 +271,9 @@ def display_singulation(waypoints, image, goal_pixel, name="debug_imgs/singulate
     plt.imshow(image.data)
     plt.plot(goal_pixel[1], goal_pixel[0], 'bo')
     plt.axis('off')
-    plt.show()
-    plt.savefig(name + ".png")
+    plt.savefig(name + ".png")  
+    if cfg.QUERY:
+        plt.show()
 
 if __name__ == "__main__":
     files = [

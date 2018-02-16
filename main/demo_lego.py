@@ -65,7 +65,6 @@ class LegoDemo():
 
         self.cam = RGBD()
         self.com = COM()
-
         if not DEBUG:
             self.com.go_to_initial_state(self.whole_body)
 
@@ -97,7 +96,7 @@ class LegoDemo():
         return
 
     def get_success(self, action):
-        if cfg.COLLECT_DATA:
+        if cfg.COLLECT_DATA and cfg.QUERY:
             print("Was " + action + " successful? (y or n)")
             succ = ""
             succ = raw_input()
@@ -166,12 +165,19 @@ class LegoDemo():
                 if len(grasp_cms) == 0:
                     to_singulate.append(c_info)
                 else:
-                    a = time.time()
+                    #print "num grasps to compute: ", len(grasp_cms)
                     for i in range(len(grasp_cms)):
+                        #a = time.time()
+                        #print "grasp # ", i
                         pose,rot = self.gm.compute_grasp(grasp_cms[i], grasp_dirs[i], d_img)
+                        #prev_time = time.time() - a
                         grasp_pose = self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=workspace_img.data)
+                        #pose_time = time.time() - prev_time
+                        # pre_pose = self.gripper.get_grasp_pose(pose[0], pose[1] + 200, pose[2], rot, c_img=workspace_img.data)
                         class_num = hsv_classify(col_img.mask_binary(grasp_masks[i]))
+                        #class_time = time.time() - pose_time
                         to_grasp.append((grasp_cms[i], grasp_dirs[i], grasp_masks[i], grasp_pose, class_num))
+                        #IPython.embed()
                     compute_grasps_time += time.time() - a
             #impose ordering on grasps (by closest/highest y first)
             to_grasp.sort(key=lambda g:-1 * g[0][0])
@@ -240,7 +246,7 @@ class LegoDemo():
             self.whole_body.move_to_go()
             self.gm.position_head()
 
-            time.sleep(3) #making sure the robot is finished moving
+            time.sleep(8) #making sure the robot is finished moving
             c_img = self.cam.read_color_data()
             d_img = self.cam.read_depth_data()
 

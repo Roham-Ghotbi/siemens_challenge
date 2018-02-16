@@ -14,7 +14,7 @@ import cPickle as pickle
 
 
 
-def set_crop(img_path="debug/imgs/new_setup/img0.png"):
+def set_crop(img_path="debug/imgs/new_setup_crop/crop_sample.png"):
     points = []
     # see https://stackoverflow.com/questions/5501192/how-to-display-picture-and-get-mouse-click-coordinate-on-it
     root = Tk()
