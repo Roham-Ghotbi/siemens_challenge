@@ -289,13 +289,15 @@ def grasps_within_pile(color_mask):
     individual_masks = []
     a = time.time()
     #color to binary
-    focus_mask = color_mask.to_binary()
-    #focus_mask = np.zeros(color_mask.data.shape[0:2])
-    #for i, r in enumerate(color_mask.data):
+    # focus_mask = color_mask.to_binary() #this only looks at 1 channel so it doesn't always work correctly
+    focus_mask = BinaryImage(np.sum(255 * (color_mask.data > 0), axis=2).astype(np.uint8))
+    #this is too slow 
+    # focus_mask = np.zeros(color_mask.data.shape[0:2])
+    # for i, r in enumerate(color_mask.data):
     #    for j, c in enumerate(r):
     #        if c[0] > 0 or c[1] > 0 or c[2] > 0:
     #            focus_mask[i][j] = 255
-    #focus_mask = BinaryImage(focus_mask.astype(np.uint8))
+    # focus_mask = BinaryImage(focus_mask.astype(np.uint8))
     col_to_bin_time = time.time() - a
     a = time.time()
     #segment by hsv
@@ -306,6 +308,9 @@ def grasps_within_pile(color_mask):
             obj_mask = focus_mask.mask_by_ind(np.array(valid_pix))
             individual_masks.append(obj_mask)
     hsv_seg_time = time.time() - a
+    obj_focus_mask = individual_masks[0]
+    for im in individual_masks[1:]:
+        obj_focus_mask += im
 
     #for each hsv block, again separate by connectivity
     a = time.time()
@@ -320,12 +325,11 @@ def grasps_within_pile(color_mask):
             #matches endpoints of line in visualization
             grasp_top = grasp_info[0] + grasp_info[1] * cfg.LINE_SIZE/2
             grasp_bot = grasp_info[0] - grasp_info[1] * cfg.LINE_SIZE/2
-            if is_valid_grasp(grasp_top, focus_mask) and is_valid_grasp(grasp_bot, focus_mask):
+            if is_valid_grasp(grasp_top, obj_focus_mask) and is_valid_grasp(grasp_bot, obj_focus_mask):
                 all_center_masses.append(grasp_info[0])
                 all_directions.append(grasp_info[1])
                 all_masks.append(grasp_info[2])
     seperate_time = time.time() - a
     lis = [hsv_hist_time, col_to_bin_time, hsv_seg_time, seperate_time]
-    #IPython.embed()
 
     return all_center_masses, all_directions, all_masks

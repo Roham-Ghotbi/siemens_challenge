@@ -28,6 +28,9 @@ import rospy
 from il_ros_hsr.core.crane_gripper import Crane_Gripper
 from il_ros_hsr.core.grasp_planner import GraspPlanner
 
+from il_ros_hsr.core.suction_gripper import Suction_Gripper
+from il_ros_hsr.core.suction import Suction
+
 from il_ros_hsr.p_pi.bed_making.com import Bed_COM as COM
 import sys
 
@@ -81,8 +84,8 @@ if __name__ == "__main__":
 
     gp = GraspPlanner()
     gripper = Crane_Gripper(gp, cam, com.Options, robot.get('gripper'))
-
-    gm = GraspManipulator(gp, gripper, whole_body, omni_base, tt)
+    suction = Suction_Gripper(gp, cam, com.Options, robot.get('suction'))
+    gm = GraspManipulator(gp, gripper, suction, whole_body, omni_base, tt)
     gm.position_head()
 
     print "after thread"

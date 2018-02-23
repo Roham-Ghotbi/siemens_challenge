@@ -36,6 +36,9 @@ HUES_TO_BINS = ["orange", "green-yellow", "cyan", "black", "red", "green", "blue
 COLLECT_DATA = True
 #whether to show plots/ask for success
 QUERY = False
+#whether to attempt multiple grasps from just 1 image
+#If true, susceptible to error from open loop control
+CHAIN_GRASPS = False
 #
 # path and dataset parameter
 #
@@ -54,7 +57,7 @@ if USE_DART:
 
 	BC_HELD_OUT = DATA_PATH+'held_out_cal'
 else:
-	ROLLOUT_PATH = DATA_PATH+'rollouts/'
+	ROLLOUT_PATH = DATA_PATH+'rollouts_setup1/'
 
 	BC_HELD_OUT = DATA_PATH+'held_out_bc'
 

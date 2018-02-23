@@ -6,9 +6,10 @@ import numpy as np
 from tpc.perception.cluster_registration import class_num_to_name
 
 class GraspManipulator():
-    def __init__(self, gp, gripper, whole_body, omni_base, tt):
+    def __init__(self, gp, gripper, suction, whole_body, omni_base, tt):
         self.gp = gp
         self.gripper = gripper
+        self.suction = suction
         self.whole_body = whole_body
         self.omni_base = omni_base
         self.tt = tt
@@ -91,6 +92,27 @@ class GraspManipulator():
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), above_pose)
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), below_pose)
         self.gripper.open_gripper()
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), above_pose)
+
+    def execute_suction(self, grasp_name, class_num):
+        self.whole_body.end_effector_frame = "hand_l_finger_vacuum_frame"
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), grasp_name)
+        self.whole_body.move_end_effector_pose(geometry.pose(z=0.1),grasp_name)
+        self.suction.start()
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),grasp_name)
+
+        color_name = class_num_to_name(class_num)
+        print("Identified lego: " + color_name)
+
+        lego_class_num = cfg.HUES_TO_BINS.index(color_name)
+
+        above_pose = "lego" + str(lego_class_num) + "above"
+        below_pose = "lego" + str(lego_class_num) + "below"
+        IPython.embed()
+        self.whole_body.end_effector_frame = 'hand_palm_link'
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), above_pose)
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), below_pose)
+        self.suction.stop()
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), above_pose)
 
     def go_to_point(self, point, rot, c_img, d_img):

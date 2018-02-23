@@ -44,15 +44,18 @@ from tpc.data_manager import DataManager
 #from il_ros_hsr.core.rgbd_to_map import RGBD2Map
 
 if __name__ == "__main__":
-    dm = DataManager(False)
-    rnum = dm.num_rollouts - 3
-    rollout = dm.read_rollout(rnum)
-    print rollout[0].keys()
-    c_imgs = [traj["c_img"] for traj_ind, traj in enumerate(rollout) if traj["action"] == "grasp"]
-    d_imgs = [traj["d_img"] for traj_ind, traj in enumerate(rollout) if traj["action"] == "grasp"]
-    c_img = c_imgs[0]
-    d_img = d_imgs[0]
-    main_mask = crop_img(c_img)
+    # dm = DataManager(False)
+    # rnum = dm.num_rollouts - 3
+    # rollout = dm.read_rollout(rnum)
+    # print rollout[0].keys()
+    # c_imgs = [traj["c_img"] for traj_ind, traj in enumerate(rollout) if traj["action"] == "grasp"]
+    # d_imgs = [traj["d_img"] for traj_ind, traj in enumerate(rollout) if traj["action"] == "grasp"]
+    # c_img = c_imgs[0]
+    # d_img = d_imgs[0]
+
+    c_img = cv2.imread("debug_imgs/singulation_failure.png")
+
+    main_mask = crop_img(c_img, use_preset=True)
     col_img = ColorImage(c_img)
     workspace_img = col_img.mask_binary(main_mask)
 

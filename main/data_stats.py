@@ -4,13 +4,10 @@ import IPython
 import cv2
 import os
 import cPickle as pickle
-from tpc.perception.image import ColorImage, BinaryImage
+from perception import ColorImage, BinaryImage
 from tpc.perception.cluster_registration import display_grasps
 from tpc.perception.singulation import display_singulation
 from tpc.data_manager import DataManager
-
-#to fix
-#singulation success metric
 
 if __name__ == "__main__":
     connected_components_times = []
@@ -112,7 +109,7 @@ if __name__ == "__main__":
                 curr_grasp_successes = 0
                 curr_grasp_attempts = 0
                 for i, s in enumerate(succ):
-                    if s != "?":
+                    if s != "?" and s != "x":
                         c = traj["color"][i]
                         curr_grasp_attempts += 1
                         if s == "y":
@@ -149,14 +146,15 @@ if __name__ == "__main__":
                     #the number of non-0,1 singulation sequences recorded elsewhere
                     #because these sequences do not have to end in a grasp=
                     prev_img, prev_after, prev_info, prev_crop = prev_singulate_info
-                    curr_dir = "debug_imgs/singulate_fails/" + str(fail_num_singulate) + "/"
-                    if not os.path.exists(curr_dir):
-                        os.makedirs(curr_dir)
+                    curr_dir = "debug_imgs/singulate_fails/" + str(fail_num_singulate) + "_"
+                    # if not os.path.exists(curr_dir):
+                    #     os.makedirs(curr_dir)
                     cv2.imwrite(curr_dir + "orig.png", prev_img)
                     prev_way, prev_rot, prev_free = prev_info
                     display_singulation(prev_way, ColorImage(prev_crop), prev_free, name=curr_dir + "singulations")
                     if prev_after is not None:
                         cv2.imwrite(curr_dir + "after.png", prev_after)
+                    #re-run singulation (see if new alg is better)
                     fail_num_singulate += 1
                 last_was_grasp = False
                 curr_singulate_sequence += 1
@@ -168,10 +166,11 @@ if __name__ == "__main__":
                 # if rnum == to_save_imgs_num:
                 #     display_singulation(waypoints, ColorImage(crop), free_pix,
                 #         name = "debug_imgs/rollout_imgs/r" + str(trajnum))
-                singulation_attempts += 1
-                if succ == "y":
-                    singulation_successes += 1
-                prev_singulate_info = (c_img, c_after, info, crop)
+                if succ != "x" and succ != "?":
+                    singulation_attempts += 1
+                    if succ == "y":
+                        singulation_successes += 1
+                    prev_singulate_info = (c_img, c_after, info, crop)
             trajnum += 1
         #if grasp followed by crash
         if curr_grasp_sequence_t > 0:

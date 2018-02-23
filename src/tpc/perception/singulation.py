@@ -218,7 +218,7 @@ def find_singulation(img, focus_mask, obj_mask, other_objs, alg="border"):
     waypoints = []
 
     #make sure starting point is not in pile
-    low += (low - high)/np.linalg.norm(low-high) * 1.5
+    low += (low - high)/np.linalg.norm(low-high) * 1.2
 
     waypoints.append(low)
 
@@ -230,13 +230,17 @@ def find_singulation(img, focus_mask, obj_mask, other_objs, alg="border"):
         gripper_angle = push_angle + np.pi/2.0
     elif alg == "border":
         waypoints.append(low * 1.0/4.0 + high * 3.0/4.0)
-        goal_in_pile = goal_pixel in obj_mask.nonzero_pixels()
-        if not goal_in_pile:
-            goal_dir = goal_pixel - mean
-            goal_dir = goal_dir / np.linalg.norm(goal_dir)
-            towards_free = obj_mask.closest_zero_pixel(mean, goal_dir, w=40)
-            waypoints.append(towards_free)
-            gripper_angle = 0
+        # goal_in_pile = goal_pixel in obj_mask.nonzero_pixels()
+        # if not goal_in_pile:
+        goal_dir = goal_pixel - mean
+        goal_dir = goal_dir / np.linalg.norm(goal_dir)
+        towards_free = obj_mask.closest_zero_pixel(mean, goal_dir, w=40)
+
+        #want closer of goal pixel, and point closest to goal pixel on edge of mask
+        closer_goal = min([goal_pixel, towards_free], key = lambda p: np.linalg.norm(p - mean))
+
+        waypoints.append(closer_goal)
+        gripper_angle = 0
     else:
         raise ValueError("Unsupported algorithm specified. Use `border` or `free`.")
 

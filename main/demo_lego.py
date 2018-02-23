@@ -28,6 +28,10 @@ import rospy
 from il_ros_hsr.core.crane_gripper import Crane_Gripper
 from il_ros_hsr.core.grasp_planner import GraspPlanner
 
+from il_ros_hsr.core.suction_gripper import Suction_Gripper
+from il_ros_hsr.core.suction import Suction
+
+
 from il_ros_hsr.p_pi.bed_making.com import Bed_COM as COM
 import sys
 
@@ -78,8 +82,9 @@ class LegoDemo():
 
         self.gp = GraspPlanner()
         self.gripper = Crane_Gripper(self.gp, self.cam, self.com.Options, self.robot.get('gripper'))
+        self.suction = Suction_Gripper(self.gp, self.cam, self.com.Options, self.robot.get('suction'))
 
-        self.gm = GraspManipulator(self.gp, self.gripper, self.whole_body, self.omni_base, self.tt)
+        self.gm = GraspManipulator(self.gp, self.gripper, self.suction, self.whole_body, self.omni_base, self.tt)
 
         print "after thread"
 
@@ -172,11 +177,12 @@ class LegoDemo():
                         pose,rot = self.gm.compute_grasp(grasp_cms[i], grasp_dirs[i], d_img)
                         #prev_time = time.time() - a
                         grasp_pose = self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=workspace_img.data)
+                        suction_pose = self.suction.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=workspace_img.data)
                         #pose_time = time.time() - prev_time
                         # pre_pose = self.gripper.get_grasp_pose(pose[0], pose[1] + 200, pose[2], rot, c_img=workspace_img.data)
                         class_num = hsv_classify(col_img.mask_binary(grasp_masks[i]))
                         #class_time = time.time() - pose_time
-                        to_grasp.append((grasp_cms[i], grasp_dirs[i], grasp_masks[i], grasp_pose, class_num))
+                        to_grasp.append((grasp_cms[i], grasp_dirs[i], grasp_masks[i], grasp_pose, class_num, suction_pose))
                         #IPython.embed()
                     compute_grasps_time += time.time() - a
             #impose ordering on grasps (by closest/highest y first)
@@ -185,6 +191,9 @@ class LegoDemo():
             self.dm.update_traj("find_grasps_time", find_grasps_time)
 
             if len(to_grasp) > 0:
+                if not cfg.CHAIN_GRASPS:
+                    to_grasp = to_grasp[0:1]
+
                 self.dm.update_traj("action", "grasp")
                 self.dm.update_traj("info", [(c[0], c[1], c[2].data, c[4]) for c in to_grasp])
 
@@ -206,6 +215,7 @@ class LegoDemo():
                     successes[i] = "n"
                     a = time.time()
                     self.gm.execute_grasp(to_grasp[i][3], to_grasp[i][4])
+                    # self.gm.execute_suction(to_grasp[i][5], to_grasp[i][4])
                     times[i] = time.time() - a
                     self.dm.update_traj("execute_time", times)
                     successes[i] = self.get_success("grasp")
