@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     actions_before_crash = []
 
-    to_save_imgs_num = -1 #make it not pltshow
+    to_save_imgs_num = 52 #make it not pltshow
     fail_num = 0
     fail_num_singulate = 0
     dm = DataManager(False)
@@ -53,7 +53,7 @@ if __name__ == "__main__":
         trajnum = 0
         rollout_grasps = 0
         rollout_singulates = 0
-        actions = [t["action"] for t in rollout]
+        actions = [t["action"] if "action" in t else None for t in rollout]
 
         curr_singulate_sequence = 0
         curr_grasp_sequence_s = 0
@@ -70,12 +70,13 @@ if __name__ == "__main__":
             # d_after = traj["d_img_result"]
             crop = traj["crop"]
             times = []
-            connected_components_times.append(traj["connected_components_time"])
-            compute_grasps_times.append(traj["compute_grasps_time"])
-            find_grasps_times.append(traj["find_grasps_time"])
-            action = traj["action"]
-            info = traj["info"]
-            succ = traj["success"]
+            if "action" in traj:
+                connected_components_times.append(traj["connected_components_time"])
+                compute_grasps_times.append(traj["compute_grasps_time"])
+                find_grasps_times.append(traj["find_grasps_time"])
+                action = traj["action"]
+                info = traj["info"]
+                succ = traj["success"]
 
             #some rollouts were made before this statistic was added
             if "stop_condition" in traj:
@@ -104,8 +105,8 @@ if __name__ == "__main__":
                     cm, di, mask, class_num = grasp
                     cms.append(cm)
                     dis.append(di)
-                # if rnum == to_save_imgs_num:
-                #     display_grasps(ColorImage(c_img), cms, dis, name="debug_imgs/rollout_imgs/r" + str(trajnum))
+                if rnum == to_save_imgs_num:
+                    display_grasps(ColorImage(c_img), cms, dis, name="debug_imgs/rollout_imgs/r" + str(trajnum))
                 curr_grasp_successes = 0
                 curr_grasp_attempts = 0
                 for i, s in enumerate(succ):
@@ -163,9 +164,9 @@ if __name__ == "__main__":
                 if "execute_time" in traj:
                     execute_singulation_times.append(traj["execute_time"])
                 waypoints, rot, free_pix = info
-                # if rnum == to_save_imgs_num:
-                #     display_singulation(waypoints, ColorImage(crop), free_pix,
-                #         name = "debug_imgs/rollout_imgs/r" + str(trajnum))
+                if rnum == to_save_imgs_num:
+                    display_singulation(waypoints, ColorImage(crop), free_pix,
+                        name = "debug_imgs/rollout_imgs/r" + str(trajnum))
                 if succ != "x" and succ != "?":
                     singulation_attempts += 1
                     if succ == "y":

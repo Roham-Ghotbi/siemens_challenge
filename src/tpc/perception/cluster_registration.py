@@ -89,6 +89,7 @@ def display_grasps(img, center_masses, directions,name="debug_imgs/grasps"):
     cv2.imwrite(name + ".png", img_data)
     if cfg.QUERY:
         plt.show()
+
 def dist_mod(m, a, b):
     """
     returns shortest distance between a and b under mod m
@@ -124,15 +125,13 @@ def get_hsv_hist(img):
             val = pix[2]
             sat = pix[1]
             #ignore white
-            is_white = sat < 0.1 * cfg.SAT_RANGE
-            if not is_white:
-                #black is its own bin
-                is_black = val < 0.3 * cfg.VALUE_RANGE
-                if is_black:
+            if not (sat < cfg.WHITE_FACTOR * cfg.SAT_RANGE):
+                #black is its own bin 
+                if val < cfg.BLACK_FACTOR * cfg.VALUE_RANGE:
                     bin_hue = -1
                 else:
-                    all_hues = cfg.HUE_VALUES.keys()
-                    bin_hue = min(all_hues, key = lambda h:
+                    non_black_hues = cfg.HUE_VALUES.keys()
+                    bin_hue = min(non_black_hues, key = lambda h:
                         dist_mod(cfg.HUE_RANGE, hue, h))
 
                 if bin_hue not in hue_counts:
@@ -178,71 +177,31 @@ def hsv_classify(img):
     :integer
         class number from 0 to 7
     """
-    counts, _ = get_hsv_hist(img)
-    color = max(counts, key=counts.get)
+    hue_to_count, _ = get_hsv_hist(img)
+    dominant_hue = max(hue_to_count, key=hue_to_count.get)
 
-    all_hues = cfg.HUE_VALUES.keys() + [-1]
+    all_hues = cfg.ALL_HUE_VALUES.keys()
     all_hues.sort()
 
-    class_num = all_hues.index(color)
+    class_num = all_hues.index(dominant_hue)
     return class_num
 
 def class_num_to_name(class_num):
-    all_hues = cfg.HUE_VALUES.keys() + [-1]
-    all_hues.sort()
-    color = all_hues[class_num]
-    if color == -1:
-        color_name = "black"
-    else:
-        color_name = cfg.HUE_VALUES[color]
-    return color_name
-
-def has_multiple_objects(img, alg="hsv"):
-    """ Counts the objects in a cluster
+    """ Gets the color name for the index
     Parameters
     ----------
-    img :obj:`ColorImg`
-        mask of object cluster
-    algo :obj:`str`, optional
-        Algorithm to use for counting (`size` or `color` or `hsv`)
+    class_num :integer 
+        class number from 0 to 7
     Returns
     -------
-    :boolean
-        True if multiple objects, else False
+    :obj:string
+        color name
     """
-    if alg == "size":
-        #todo- modify to use projected image
-        #relies on objects being the same size
-        img = img.to_binary()
-        n_pixels = len(img.nonzero_pixels())
-        n_objs = int(n_pixels/550)
-    elif alg == "color":
-        img = img.to_binary()
-        bin_span = 128
-        bins = [0 for i in range((256/bin_span)**3)]
-        img_data = img.data
-        for row in img_data:
-            for pixel in row:
-                b, g, r = pixel
-                #put into bins
-                b, g, r = int(b/bin_span), int(g/bin_span), int(r/bin_span)
-                #calculate unique index for every combination of bins
-                ind = int(b * (256/bin_span)**2 + g * (256/bin_span) + r)
-                bins[ind] += 1
-        n_objs = sum(np.array(bins) > 250) - 1 #ignore black
-    elif alg == "hsv":
-        hues, _ = get_hsv_hist(img)
-        n_objs = 0
-        for block_color in hues.keys():
-            if hues[block_color] > cfg.HSV_MAX:
-                n_objs += 2
-            elif hues[block_color] > cfg.HSV_MIN:
-                n_objs += 1
-    else:
-        raise ValueError("Unsupported algorithm specified. Use 'size' or 'color' or 'hsv'")
-    if n_objs == 0:
-        raise ValueError("Cluster should have at least 1 object")
-    return n_objs > 1
+    all_hues = cfg.ALL_HUE_VALUES.keys()
+    all_hues.sort()
+    hue = all_hues[class_num]
+    color_name = cfg.ALL_HUE_VALUES[hue]
+    return color_name
 
 def is_valid_grasp(point, focus_mask):
     """ Checks that the point does not overlap
@@ -259,10 +218,9 @@ def is_valid_grasp(point, focus_mask):
     """
     ymid = int(point[0])
     xmid = int(point[1])
-    #increase range to reduce false positives
-    check_range = 2
-    for y in range(ymid - check_range, ymid + check_range):
-        for x in range(xmid - check_range, xmid + check_range):
+
+    for y in range(ymid - cfg.CHECK_RANGE, ymid + cfg.CHECK_RANGE):
+        for x in range(xmid - cfg.CHECK_RANGE, xmid + cfg.CHECK_RANGE):
             if focus_mask.data[y][x] != 0:
                 return False
     return True

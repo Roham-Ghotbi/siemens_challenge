@@ -37,8 +37,7 @@ import sys
 
 from il_ros_hsr.p_pi.tpc.gripper import Lego_Gripper
 from tpc.perception.cluster_registration import run_connected_components, display_grasps, \
-    has_multiple_objects, grasps_within_pile, view_hsv, get_hsv_hist, hsv_classify
-from tpc.perception.singulation import find_singulation, display_singulation
+    grasps_within_pile, view_hsv, get_hsv_hist, hsv_classify
 from tpc.perception.crop import crop_img
 from tpc.data_manager import DataManager
 from tpc.manipulation.primitives import GraspManipulator

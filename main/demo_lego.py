@@ -38,8 +38,8 @@ import sys
 
 from il_ros_hsr.p_pi.tpc.gripper import Lego_Gripper
 from tpc.perception.cluster_registration import run_connected_components, display_grasps, \
-    has_multiple_objects, grasps_within_pile, view_hsv, get_hsv_hist, hsv_classify
-from tpc.perception.singulation import find_singulation, display_singulation
+    grasps_within_pile, view_hsv, get_hsv_hist, hsv_classify
+from tpc.perception.singulation import Singulation
 from tpc.perception.crop import crop_img
 from tpc.data_manager import DataManager
 from tpc.manipulation.primitives import GraspManipulator
@@ -229,15 +229,13 @@ class LegoDemo():
                 print("singulating")
                 a = time.time()
 
-                #singulate smallest pile
-                masks = [c[2] for c in to_singulate]
-                masks.sort(key=lambda m:len(m.nonzero_pixels()))
-                waypoints, rot, free_pix = find_singulation(col_img, main_mask, masks[0],
-                    masks[1:], alg="border")
+                singulator = Singulation(col_img, main_mask, workspace_img, [c[2] for c in to_singulate])
+                waypoints, rot, free_pix = singulator.get_singulation()
                 self.dm.update_traj("compute_singulate_time", time.time() - a)
 
-                display_singulation(waypoints, workspace_img, free_pix,
-                    name = "debug_imgs/singulate")
+                singulator.display_singulation()
+                # display_singulation(waypoints, workspace_img, free_pix,
+                #     name = "debug_imgs/singulate")
                 # IPython.embed()
 
                 self.dm.update_traj("info", (waypoints, rot, free_pix))

@@ -30,8 +30,8 @@ import sys
 
 from tpc.python_labeler import Python_Labeler
 
-from tpc.perception.cluster_registration import run_connected_components, visualize, has_multiple_objects
-from tpc.perception.singulation import find_singulation, display_singulation
+from tpc.perception.cluster_registration import run_connected_components, visualize
+from tpc.perception.singulation import Singulation
 from tpc.perception.crop import crop_img
 from tpc.perception.bbox import bbox_to_mask, bbox_to_grasp
 from perception import ColorImage, BinaryImage

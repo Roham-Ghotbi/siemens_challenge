@@ -36,7 +36,7 @@ import sys
 
 from il_ros_hsr.p_pi.tpc.gripper import Lego_Gripper
 from tpc.perception.cluster_registration import run_connected_components, draw, count_size_blobs
-from tpc.perception.singulation import find_singulation, display_singulation
+from tpc.perception.singulation import Singulation
 from perception import ColorImage, BinaryImage
 from il_ros_hsr.p_pi.bed_making.table_top import TableTop
 

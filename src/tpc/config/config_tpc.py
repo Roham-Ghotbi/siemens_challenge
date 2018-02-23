@@ -1,155 +1,70 @@
 import os
 import numpy as np
 
-#number of pixels apart to be singulated
-DIST_TOL = 5
+"""CONFIG FILE FOR TPC LEGO PROJECT"""
 
-#background range for thresholding the image
-COLOR_TOL = 40
+"""OPTIONS FOR DEMO"""
+#whether to save rollouts
+COLLECT_DATA = True
 
-#number of pixels necssary for a cluster
-SIZE_TOL = 350
+#whether to show plots/ask for success
+QUERY = False
 
-#distance grasp extends
-LINE_SIZE = 40
+#whether to attempt multiple grasps from just 1 image; if true, susceptible to error from open loop control
+CHAIN_GRASPS = False
 
-#range around grasp point used to calculate average depth value
-ZRANGE = 20
 
-#cv2 range for HSV hue values
-HUE_RANGE = 180.0
 
-#cv2 range for HSV sat values
-SAT_RANGE = 255.0
-
-#cv2 range for HSV value values
-VALUE_RANGE = 255.0
-
-#see https://en.wikipedia.org/wiki/HSL_and_HSV (scaled down from 360 to 180 degrees)
-HUE_VALUES = {90: "cyan", 120: "blue", 0: "red", 10: "orange", 30: "yellow",
-	60: "green", 35: "green-yellow"}
-
+"""TABLE SETUP SPECIFIC VALUES"""
 #ordered by layout on floor (top to bottom with close row first)
 HUES_TO_BINS = ["orange", "green-yellow", "cyan", "black", "red", "green", "blue", "yellow"]
 
-#whether to save rollouts
-COLLECT_DATA = True
-#whether to show plots/ask for success
-QUERY = False
-#whether to attempt multiple grasps from just 1 image
-#If true, susceptible to error from open loop control
-CHAIN_GRASPS = False
-#
-# path and dataset parameter
-#
+
+
+"""EMPIRICALLY TUNED PARAMETERs"""
+#CONENCTED COMPONENTS ALG PARAMETERS
+#number of pixels apart to be singulated
+DIST_TOL = 5
+#background range for thresholding the image
+COLOR_TOL = 40
+#number of pixels necssary for a cluster
+SIZE_TOL = 350
+
+#ROBOT PARAMETERS
+#distance grasp extends
+LINE_SIZE = 40
+#side length of square that checks grasp collisions
+#increase range to reduce false positives
+CHECK_RANGE = 2
+#range around grasp point used to calculate average depth value
+ZRANGE = 20
+
+#HSV PARAMETERS
+#cv2 range for HSV hue values
+HUE_RANGE = 180.0
+#cv2 range for HSV sat values
+SAT_RANGE = 255.0
+#cv2 range for HSV value values
+VALUE_RANGE = 255.0
+#fraction of saturation range that is white
+WHITE_FACTOR = 0.1
+#fraction of value range that is black
+BLACK_FACTOR = 0.3
+#carving up HSV color space by lego-specific colors
+#see https://en.wikipedia.org/wiki/HSL_and_HSV (scaled down from 360 to 180 degrees)
+HUE_VALUES = {90: "cyan", 120: "blue", 0: "red", 10: "orange", 30: "yellow",
+	60: "green", 35: "green-yellow"}
+#include black as special case
+ALL_HUE_VALUES = HUE_VALUES.copy()
+ALL_HUE_VALUES[-1] = "black"
+
+#singulation parameters
+#factor to move start point by so it is not in the pile
+SINGULATE_START_FACTOR = 1.2
+#factor to move end point by towards start point
+SINGULATE_END_FACTOR = 0.75
+
+"""PATHS AND DATASET PARAMETERS"""
 ROOT_DIR = '/media/autolab/1tb/data/'
 DATA_PATH = ROOT_DIR + 'tpc/'
-
-#BELOW INCLUDES PARAMETERS FROM BED_MAKING
-NET_NAME = '07_31_00_09_46save.ckpt-30300'
-
-USE_DART = False
-
-
-if USE_DART:
-
-	ROLLOUT_PATH = DATA_PATH+'rollouts_dart_cal/'
-
-	BC_HELD_OUT = DATA_PATH+'held_out_cal'
-else:
-	ROLLOUT_PATH = DATA_PATH+'rollouts_setup1/'
-
-	BC_HELD_OUT = DATA_PATH+'held_out_bc'
-
-FAST_PATH = DATA_PATH+'fast_pic/'
-
-
-#STAT_PATH = DATA_PATH+'stats_dart_adv/'
-STAT_PATH = DATA_PATH+'stats/'
-#STAT_PATH = DATA_PATH+'stats/'
-#STAT_PATH = DATA_PATH+'stats_analytic_adv/'
-
-
-
-GRASP_LABEL_PATH = DATA_PATH+'grasp_labels/'
-SUCCESS_LABEL_PATH = DATA_PATH+'success_labels/'
-
-TRAN_OUTPUT_DIR = DATA_PATH +'transition_output/'
-TRAN_STATS_DIR = TRAN_OUTPUT_DIR + 'stats/'
-TRAIN_STATS_DIR_T = TRAN_OUTPUT_DIR + 'train_stats/'
-TEST_STATS_DIR_T = TRAN_OUTPUT_DIR + 'test_stats/'
-
-
-GRASP_OUTPUT_DIR = DATA_PATH + 'grasp_output/'
-GRASP_STAT_DIR = GRASP_OUTPUT_DIR + 'rollout_cs/'
-TRAIN_STATS_DIR_G = GRASP_OUTPUT_DIR + 'train_stats/'
-TEST_STATS_DIR_G = GRASP_OUTPUT_DIR + 'test_stats/'
-
-PRE_TRAINED_DIR = '/home/autolab/Workspaces/michael_working/yolo_tensorflow/data/pascal_voc/weights/'
-
-WEIGHTS_FILE = None
-
-
-# WEIGHTS_FILE = os.path.join(DATA_PATH, 'weights', 'YOLO_small.ckpt')
-
-# CLASSES = ['yes','no']
-
-# #CLASSES = ['aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus',
-#            'car', 'cat', 'chair', 'cow', 'diningtable', 'dog', 'horse',
-#            'motorbike', 'person', 'pottedplant', 'sheep', 'sofa',
-# 			'train', 'tvmonitor']
-
-
-
-if USE_DART:
-	GRASP_NET_NAME = "10_17_16_25_45_CS_0_save.ckpt-500"
-	TRAN_NET_NAME = "10_17_16_33_07_CS_0_save.ckpt-500"
-else:
-	#BC_NETWORK
-	TRAN_NET_NAME = "09_06_00_10_12_SS_0save.ckpt-30300"
-
-	#BC_NETWORK
-	GRASP_NET_NAME = "09_09_12_01_49_CS_0_save.ckpt-1200"
-
-
-
-#GRASP_NET_NAME = "09_08_11_14_12_CS_1_save.ckpt-6000"
-
-
-MSR_LOSS = True
-
-USE_WEB_INTERFACE = False
-
-#SS LEARN
-SS_LEARN = False
-NUM_SS_DATA = 3
-SS_TIME = 1.2
-
-
-RIGHT_SIDE = True
-
-
-#TENSIONER
-FORCE_LIMT = 25.0
-HIGH_FORCE = 25.0
-LOW_FORCE = 2.0
-MAX_PULLS = 3
-BOX = 10
-
-#DEBUG
-DEBUG_MODE = False
-
-
-#GRIPPER
-GRIPPER_HEIGHT = 0.06
-#GRIPPER_HEIGHT = 0.090
-MM_TO_M = 0.001
-
-
-
-GRASP_OUT = 8
-INS_SAMPLE = True
-
-
-DART_MAT = np.array([[ 1421.21439203,  -158.39422591],
- 					[ -158.39422591, 165.80726958]])
+ROLLOUT_PATH = DATA_PATH+'rollouts_setup1/'

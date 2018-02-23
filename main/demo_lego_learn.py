@@ -34,8 +34,8 @@ import sys
 from tpc.python_labeler import Python_Labeler
 
 from il_ros_hsr.p_pi.tpc.gripper import Lego_Gripper
-from tpc.perception.cluster_registration import run_connected_components, visualize, has_multiple_objects
-from tpc.perception.singulation import find_singulation, display_singulation
+from tpc.perception.cluster_registration import run_connected_components, visualize
+from tpc.perception.singulation import Singulation
 from tpc.perception.crop import crop_img
 from tpc.perception.bbox import bbox_to_mask, bbox_to_grasp
 from tpc.manipulation.primitives import GraspManipulator
