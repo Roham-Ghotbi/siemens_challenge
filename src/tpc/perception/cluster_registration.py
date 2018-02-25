@@ -9,7 +9,7 @@ import tpc.config.config_tpc as cfg
 from sklearn.decomposition import PCA
 import time
 
-def run_connected_components(img, dist_tol=5, color_tol=45, size_tol=300, viz=False):
+def run_connected_components(img, viz=False):
     """ Generates mask for
     each cluster of objects
     Parameters
@@ -17,14 +17,6 @@ def run_connected_components(img, dist_tol=5, color_tol=45, size_tol=300, viz=Fa
     img :obj:`ColorImage`
         color image masked to
         white working area
-    dist_tol : int
-        minimum euclidean distance
-        to be in same cluster
-    color_tol : int
-        minimum color distance
-        to not threshold out
-    size_tol : int
-        minimum cluster size
     viz : boolean
         if true, displays proposed grasps
     Returns
@@ -38,12 +30,12 @@ def run_connected_components(img, dist_tol=5, color_tol=45, size_tol=300, viz=Fa
             cluster masks
     """
 
-    fg = img.foreground_mask(color_tol, ignore_black=True)
+    fg = img.foreground_mask(cfg.COLOR_TOL, ignore_black=True)
     if viz:
         cv2.imwrite("debug_imgs/mask.png", fg.data)
     # img = cv2.medianBlur(img, 3)
 
-    center_masses, directions, masks = get_cluster_info(fg, dist_tol, size_tol)
+    center_masses, directions, masks = get_cluster_info(fg)
     #would like to filter out clusters that are just lines here
 
     if viz:
@@ -72,23 +64,24 @@ def display_grasps(img, center_masses, directions,name="debug_imgs/grasps"):
     :obj:`numpy.ndarray`
         visualization image
     """
-    box_color = (255, 0, 0)
-    line_color = box_color[::-1]
-    img_data = np.copy(img.data)
-    for i in range(len(center_masses)):
-        cm = center_masses[i]
-        d = directions[i]
+    if len(center_masses) > 0:
+        box_color = (255, 0, 0)
+        line_color = box_color[::-1]
+        img_data = np.copy(img.data)
+        for i in range(len(center_masses)):
+            cm = center_masses[i]
+            d = directions[i]
 
-        img_data = draw_point(img_data, cm)
+            img_data = draw_point(img_data, cm)
 
-        p0 = tuple((cm - d * cfg.LINE_SIZE/2)[::-1].astype('uint32'))
-        p1 = tuple((cm + d * cfg.LINE_SIZE/2)[::-1].astype('uint32'))
-        cv2.line(img_data, p0, p1, line_color, 2)
-    plt.figure()
-    plt.imshow(img_data)
-    cv2.imwrite(name + ".png", img_data)
-    if cfg.QUERY:
-        plt.show()
+            p0 = tuple((cm - d * cfg.LINE_SIZE/2)[::-1].astype('uint32'))
+            p1 = tuple((cm + d * cfg.LINE_SIZE/2)[::-1].astype('uint32'))
+            cv2.line(img_data, p0, p1, line_color, 2)
+        plt.figure()
+        plt.imshow(img_data)
+        cv2.imwrite(name + ".png", img_data)
+        if cfg.QUERY:
+            plt.show()
 
 def dist_mod(m, a, b):
     """
@@ -104,7 +97,7 @@ def get_hsv_hist(img):
     """ Separates image into bins by HSV and creates histograms
     Parameters
     ----------
-    img :obj:`ColorImg`
+    img :obj:`ColorImage`
         color image masked to relevant area
     Returns
     -------
@@ -146,10 +139,10 @@ def view_hsv(img):
     """ Separates image into bins by HSV and creates visualization
     Parameters
     ----------
-    img :obj:`ColorImg`
+    img :obj:`ColorImage`
     Returns
     -------
-    :obj:`ColorImg`
+    :obj:`ColorImage`
     """
     _, pixels = get_hsv_hist(img)
 
@@ -170,7 +163,7 @@ def hsv_classify(img):
     """ Classifies the lego by HSV
     Parameters
     ----------
-    img :obj:`ColorImg`
+    img :obj:`ColorImage`
         mask of lego
     Returns
     -------
@@ -210,7 +203,7 @@ def is_valid_grasp(point, focus_mask):
     ----------
     point :obj:list of `numpy.ndarray`
         1x2 point
-    focus_mask :obj:`BinaryImg`
+    focus_mask :obj:`BinaryImage`
         mask of object cluster
     Returns
     -------
@@ -218,18 +211,31 @@ def is_valid_grasp(point, focus_mask):
     """
     ymid = int(point[0])
     xmid = int(point[1])
+    d = cfg.CHECK_RANGE 
 
-    for y in range(ymid - cfg.CHECK_RANGE, ymid + cfg.CHECK_RANGE):
-        for x in range(xmid - cfg.CHECK_RANGE, xmid + cfg.CHECK_RANGE):
-            if focus_mask.data[y][x] != 0:
-                return False
-    return True
+    check_box = focus_mask.data[ymid - d:ymid + d, xmid - d:xmid + d]
+    num_nonzero = np.sum(check_box > 0)
+
+    fraction_nonzero = (num_nonzero * 1.0)/((2 * d)**2)
+    return fraction_nonzero < 0.2
+
+def color_to_binary(img):
+    """
+    Parameters
+    ----------
+    img :obj:`ColorImage`
+        mask of object cluster
+    Returns
+    -------
+    :obj:`BinaryImage`
+    """
+    return BinaryImage(np.sum(255 * (img.data > 0), axis=2).astype(np.uint8))
 
 def grasps_within_pile(color_mask):
     """ Finds any grasps within the pile
     Parameters
     ----------
-    color_mask :obj:`ColorImg`
+    color_mask :obj:`ColorImage`
         mask of object cluster
     Returns
     -------
@@ -239,25 +245,13 @@ def grasps_within_pile(color_mask):
         :obj:list of `numpy.ndarray`
             grasp angles
     """
-    # print "inside the grasps"
-    a = time.time()
     hue_counts, hue_pixels = get_hsv_hist(color_mask)
-    hsv_hist_time = time.time() - a
 
     individual_masks = []
-    a = time.time()
+
     #color to binary
-    # focus_mask = color_mask.to_binary() #this only looks at 1 channel so it doesn't always work correctly
-    focus_mask = BinaryImage(np.sum(255 * (color_mask.data > 0), axis=2).astype(np.uint8))
-    #this is too slow 
-    # focus_mask = np.zeros(color_mask.data.shape[0:2])
-    # for i, r in enumerate(color_mask.data):
-    #    for j, c in enumerate(r):
-    #        if c[0] > 0 or c[1] > 0 or c[2] > 0:
-    #            focus_mask[i][j] = 255
-    # focus_mask = BinaryImage(focus_mask.astype(np.uint8))
-    col_to_bin_time = time.time() - a
-    a = time.time()
+    focus_mask = color_to_binary(color_mask)
+
     #segment by hsv
     for block_color in hue_counts.keys():
         #same threshold values for number of objects
@@ -265,18 +259,18 @@ def grasps_within_pile(color_mask):
             valid_pix = hue_pixels[block_color]
             obj_mask = focus_mask.mask_by_ind(np.array(valid_pix))
             individual_masks.append(obj_mask)
-    hsv_seg_time = time.time() - a
     obj_focus_mask = individual_masks[0]
     for im in individual_masks[1:]:
         obj_focus_mask += im
+    color_focused = color_mask.mask_binary(obj_focus_mask)
 
     #for each hsv block, again separate by connectivity
-    a = time.time()
     all_center_masses = []
     all_directions = []
     all_masks = []
-    for obj_mask in individual_masks:
-        center_masses, directions, masks = get_cluster_info(obj_mask, cfg.DIST_TOL, cfg.SIZE_TOL)
+    for i, obj_mask in enumerate(individual_masks):
+        center_masses, directions, masks = get_cluster_info(obj_mask)
+        # display_grasps(color_focused, center_masses, directions, name="debug_imgs/grasps" + str(i))
         directions = [d/np.linalg.norm(d) for d in directions]
 
         for grasp_info in zip(center_masses, directions, masks):
@@ -287,7 +281,5 @@ def grasps_within_pile(color_mask):
                 all_center_masses.append(grasp_info[0])
                 all_directions.append(grasp_info[1])
                 all_masks.append(grasp_info[2])
-    seperate_time = time.time() - a
-    lis = [hsv_hist_time, col_to_bin_time, hsv_seg_time, seperate_time]
 
     return all_center_masses, all_directions, all_masks

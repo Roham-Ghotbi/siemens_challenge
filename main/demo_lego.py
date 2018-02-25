@@ -143,8 +143,7 @@ class LegoDemo():
 
             #compute clusters (can have 1 or multiple legos)
             a = time.time()
-            center_masses, directions, masks = run_connected_components(workspace_img,
-                cfg.DIST_TOL, cfg.COLOR_TOL, cfg.SIZE_TOL, viz=False)
+            center_masses, directions, masks = run_connected_components(workspace_img, viz=False)
             cluster_info = zip(center_masses, directions, masks)
             self.dm.update_traj("connected_components_time", time.time() - a)
 
@@ -170,18 +169,11 @@ class LegoDemo():
                 if len(grasp_cms) == 0:
                     to_singulate.append(c_info)
                 else:
-                    #print "num grasps to compute: ", len(grasp_cms)
                     for i in range(len(grasp_cms)):
-                        #a = time.time()
-                        #print "grasp # ", i
                         pose,rot = self.gm.compute_grasp(grasp_cms[i], grasp_dirs[i], d_img)
-                        #prev_time = time.time() - a
                         grasp_pose = self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=workspace_img.data)
                         suction_pose = self.suction.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=workspace_img.data)
-                        #pose_time = time.time() - prev_time
-                        # pre_pose = self.gripper.get_grasp_pose(pose[0], pose[1] + 200, pose[2], rot, c_img=workspace_img.data)
                         class_num = hsv_classify(col_img.mask_binary(grasp_masks[i]))
-                        #class_time = time.time() - pose_time
                         to_grasp.append((grasp_cms[i], grasp_dirs[i], grasp_masks[i], grasp_pose, class_num, suction_pose))
                         #IPython.embed()
                     compute_grasps_time += time.time() - a
@@ -229,13 +221,11 @@ class LegoDemo():
                 print("singulating")
                 a = time.time()
 
-                singulator = Singulation(col_img, main_mask, workspace_img, [c[2] for c in to_singulate])
+                singulator = Singulation(col_img, main_mask, [c[2] for c in to_singulate])
                 waypoints, rot, free_pix = singulator.get_singulation()
                 self.dm.update_traj("compute_singulate_time", time.time() - a)
 
                 singulator.display_singulation()
-                # display_singulation(waypoints, workspace_img, free_pix,
-                #     name = "debug_imgs/singulate")
                 # IPython.embed()
 
                 self.dm.update_traj("info", (waypoints, rot, free_pix))

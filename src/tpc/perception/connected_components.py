@@ -8,6 +8,7 @@ from skimage.measure import block_reduce
 from groups import Group
 from perception import ColorImage, BinaryImage
 import IPython
+import tpc.config.config_tpc as cfg
 
 def generate_groups(img):
     """ Finds groups using adjacency
@@ -104,18 +105,13 @@ def get_smallest(groups, n):
     groups.sort()
     return groups[:min(n, len(groups))]
 
-def get_cluster_info(img, dist_tol, size_tol):
+def get_cluster_info(img):
     """ Generates mask for
     each cluster of objects
     Parameters
     ----------
     img :obj:`BinaryImage`
         mask of objects in working area
-    dist_tol : int
-        minimum euclidean distance
-        to be in same cluster
-    size_tol : int
-        minimum cluster size
     Returns
     -------
     :obj:tuple of 
@@ -126,19 +122,17 @@ def get_cluster_info(img, dist_tol, size_tol):
         :obj:list of `BinaryImage`
             cluster masks
     """
-    scale_factor = 2
-
     img_data = img.data
     orig_shape = img_data.shape
-    img_data = block_reduce(img_data, block_size = (scale_factor, scale_factor), func = np.mean)
-    dist_tol = dist_tol/scale_factor
+    img_data = block_reduce(img_data, block_size = (cfg.SCALE_FACTOR, cfg.SCALE_FACTOR), func = np.mean)
+    dist_tol = cfg.DIST_TOL/cfg.SCALE_FACTOR
 
     #find groups of adjacent foreground pixels
     groups = generate_groups(img_data)
-    groups = [g for g in groups if g.area >= size_tol/scale_factor]
+    groups = [g for g in groups if g.area >= cfg.SIZE_TOL/cfg.SCALE_FACTOR]
     groups = merge_groups(groups, dist_tol)
 
-    center_masses = [map(lambda x: x * scale_factor, g.center_mass()) for g in groups]
+    center_masses = [map(lambda x: x * cfg.SCALE_FACTOR, g.center_mass()) for g in groups]
     directions = [g.orientation() for g in groups]
     masks = [BinaryImage(imresize(g.get_mask(img_data.shape),orig_shape)) for g in groups]
     return center_masses, directions, masks

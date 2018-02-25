@@ -29,10 +29,12 @@ DIST_TOL = 5
 COLOR_TOL = 40
 #number of pixels necssary for a cluster
 SIZE_TOL = 350
+#amount to scale image down by to run algorithm (for speed)
+SCALE_FACTOR = 2
 
 #ROBOT PARAMETERS
 #distance grasp extends
-LINE_SIZE = 40
+LINE_SIZE = 38
 #side length of square that checks grasp collisions
 #increase range to reduce false positives
 CHECK_RANGE = 2
@@ -47,7 +49,7 @@ SAT_RANGE = 255.0
 #cv2 range for HSV value values
 VALUE_RANGE = 255.0
 #fraction of saturation range that is white
-WHITE_FACTOR = 0.1
+WHITE_FACTOR = 0.15 #0.1
 #fraction of value range that is black
 BLACK_FACTOR = 0.3
 #carving up HSV color space by lego-specific colors

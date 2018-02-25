@@ -53,15 +53,14 @@ if __name__ == "__main__":
     # c_img = c_imgs[0]
     # d_img = d_imgs[0]
 
-    c_img = cv2.imread("debug_imgs/singulation_failure.png")
+    c_img = cv2.imread("debug_imgs/grasp_failure.png")
 
     main_mask = crop_img(c_img, use_preset=True)
     col_img = ColorImage(c_img)
     workspace_img = col_img.mask_binary(main_mask)
 
     #compute clusters (can have 1 or multiple legos)
-    center_masses, directions, masks = run_connected_components(workspace_img,
-        cfg.DIST_TOL, cfg.COLOR_TOL, cfg.SIZE_TOL, viz=True)
+    center_masses, directions, masks = run_connected_components(workspace_img, viz=True)
     cluster_info = zip(center_masses, directions, masks)
 
     print "num masses", len(center_masses)

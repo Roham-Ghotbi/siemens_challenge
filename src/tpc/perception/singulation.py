@@ -13,7 +13,7 @@ import IPython
 import tpc.config.config_tpc as cfg
 
 class Singulation():
-    def __init__(self, img, focus_mask, workspace_img, obj_masks):
+    def __init__(self, img, focus_mask, obj_masks, goal_p=None, waypoints=None, gripper_angle=None):
         """ 
         Parameters
         ----------
@@ -23,22 +23,23 @@ class Singulation():
             crop of workspace
         obj_masks :list:obj:`BinaryImage`
             list of crops of object clusters
-        alg :string
-            `border`: push along border then to free space
-            `free`: push along border with bias to free space
         """
         self.img = img.copy() 
         self.focus_mask = focus_mask.copy()
-        obj_masks = [o.copy() for o in obj_masks]
-        self.workspace_img = workspace_img
+        self.workspace_img = self.img.mask_binary(self.focus_mask)
 
         #singulate smallest pile first
-        obj_masks.sort(key=lambda m:len(m.nonzero_pixels()))
-        self.obj_mask = obj_masks[0]
-        self.other_obj_masks = obj_masks[1:]
+        self.obj_masks = [o.copy() for o in obj_masks]
+        self.obj_masks.sort(key=lambda m:len(m.nonzero_pixels()))
 
         #run computations in advance
-        self.compute_singulation()
+        self.goal_p = goal_p
+        self.waypoints = waypoints
+        self.gripper_angle = gripper_angle 
+        if self.goal_p == None or self.waypoints == None or self.gripper_angle == None:
+            self.obj_mask = self.obj_masks[0]
+            self.other_obj_masks = self.obj_masks[1:]
+            self.compute_singulation()
 
     def display_border(self, border):
         """ helper to display the border between the segments
@@ -106,7 +107,7 @@ class Singulation():
         goal_pixel = occupied_space.most_free_pixel()
         return goal_pixel
 
-    def get_direction(self, border, goal_pixel):
+    def get_direction(self, border):
         """ Finds the direction in which to push the
         pile to separate it the most using the direction
         of the border pixels
@@ -115,8 +116,6 @@ class Singulation():
         ----------
         border :obj:`numpy.ndarray`
             nx2 array of n border pixels
-        goal_pixel :obj:`numpy.ndarray`
-            1x2 array of the goal pixel
         Returns
         -------
         :obj:`numpy.ndarray`
@@ -153,7 +152,7 @@ class Singulation():
         end_p = self.obj_mask.closest_zero_pixel(mean, direction)
 
         #should be closer to goal pixel after border push than before it
-        if np.linalg.norm(goal_p - start_p) < np.linalg.norm(goal_p - end_p):
+        if np.linalg.norm(self.goal_p - start_p) < np.linalg.norm(self.goal_p - end_p):
             start_p, end_p = end_p, start_p
 
         #small adjustments (empirically does better)
@@ -163,13 +162,16 @@ class Singulation():
         return start_p, end_p
 
     def get_goal_waypoint(self, mean):
-         """ Finds the endpoints of the first push along the borer
+        """ Finds the endpoints of the first push along the borer
 
         Parameters
         ----------
         mean :obj:`numpy.ndarray`
             1x2 vector, mean of border pixels
         """
+        if self.goal_p == None:
+            self.goal_p = self.get_goal_pixel()
+
         goal_dir = self.goal_p - mean
         goal_dir = goal_dir / np.linalg.norm(goal_dir)
         towards_goal = self.obj_mask.closest_zero_pixel(mean, goal_dir, w=40)
@@ -184,15 +186,14 @@ class Singulation():
         the pile to separate it the most, and the gripper angle
         which will keep objects farthest from other piles
         """
-        border = self.get_border()
-        mean = np.mean(border, axis=0)
-
         self.goal_p = self.get_goal_pixel()
 
-        direction, _ = self.get_direction(border, self.goal_p)
+        border = self.get_border()
+        direction, _ = self.get_direction(border)
+        mean = np.mean(border, axis=0)
 
         start_p, end_p = self.get_border_endpoints(mean, direction)
-        towards_goal_p = self.get_goal_waypoint()
+        towards_goal_p = self.get_goal_waypoint(mean)
         self.waypoints = [start_p, end_p, towards_goal_p]
 
         self.gripper_angle = 0
@@ -208,6 +209,8 @@ class Singulation():
         :obj: `numpy.ndarray`
             1x2 vector representing the goal pixel
         """
+        if self.waypoints == None or self.gripper_angle == None or self.goal_p == None:
+            self.compute_singulation()
 
         return self.waypoints, self.gripper_angle, self.goal_p
 
@@ -215,6 +218,9 @@ class Singulation():
         """
         saves visualization of singulation trajectories
         """
+        if self.waypoints == None or self.gripper_angle == None or self.goal_p == None:
+            self.compute_singulation()
+
         plt.figure()
         ax = plt.axes()
         for i in range(len(self.waypoints) - 1):

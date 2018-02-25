@@ -5,8 +5,8 @@ import cv2
 import os
 import cPickle as pickle
 from perception import ColorImage, BinaryImage
-from tpc.perception.cluster_registration import display_grasps
-from tpc.perception.singulation import display_singulation
+from tpc.perception.cluster_registration import display_grasps, color_to_binary
+from tpc.perception.singulation import Singulation
 from tpc.data_manager import DataManager
 
 if __name__ == "__main__":
@@ -48,7 +48,8 @@ if __name__ == "__main__":
     fail_num = 0
     fail_num_singulate = 0
     dm = DataManager(False)
-    for rnum in range(dm.num_rollouts):
+    # for rnum in range(dm.num_rollouts):
+    for rnum in range(to_save_imgs_num, to_save_imgs_num + 1):
         rollout = dm.read_rollout(rnum)
         trajnum = 0
         rollout_grasps = 0
@@ -145,14 +146,14 @@ if __name__ == "__main__":
                 if not last_was_grasp and prev_singulate_info is not None:
                     #the number of failure recorded here may be more than
                     #the number of non-0,1 singulation sequences recorded elsewhere
-                    #because these sequences do not have to end in a grasp=
+                    #because these sequences do not have to end in a grasp
                     prev_img, prev_after, prev_info, prev_crop = prev_singulate_info
                     curr_dir = "debug_imgs/singulate_fails/" + str(fail_num_singulate) + "_"
                     # if not os.path.exists(curr_dir):
                     #     os.makedirs(curr_dir)
                     cv2.imwrite(curr_dir + "orig.png", prev_img)
                     prev_way, prev_rot, prev_free = prev_info
-                    display_singulation(prev_way, ColorImage(prev_crop), prev_free, name=curr_dir + "singulations")
+                    # display_singulation(prev_way, ColorImage(prev_crop), prev_free, name=curr_dir + "singulations")
                     if prev_after is not None:
                         cv2.imwrite(curr_dir + "after.png", prev_after)
                     #re-run singulation (see if new alg is better)
@@ -165,8 +166,9 @@ if __name__ == "__main__":
                     execute_singulation_times.append(traj["execute_time"])
                 waypoints, rot, free_pix = info
                 if rnum == to_save_imgs_num:
-                    display_singulation(waypoints, ColorImage(crop), free_pix,
-                        name = "debug_imgs/rollout_imgs/r" + str(trajnum))
+                    singulator = Singulation(ColorImage(c_img), color_to_binary(ColorImage(crop)), [], goal_p = free_pix, waypoints = waypoints, gripper_angle=0)
+                    singulator.display_singulation(name = "debug_imgs/rollout_imgs/r" + str(trajnum))
+                    cv2.imwrite("debug_imgs/rollout_imgs/r" + str(trajnum) + "crop.png", crop)
                 if succ != "x" and succ != "?":
                     singulation_attempts += 1
                     if succ == "y":
