@@ -259,10 +259,10 @@ def grasps_within_pile(color_mask):
             valid_pix = hue_pixels[block_color]
             obj_mask = focus_mask.mask_by_ind(np.array(valid_pix))
             individual_masks.append(obj_mask)
-    obj_focus_mask = individual_masks[0]
-    for im in individual_masks[1:]:
-        obj_focus_mask += im
-    color_focused = color_mask.mask_binary(obj_focus_mask)
+    if len(individual_masks) > 0:
+        obj_focus_mask = individual_masks[0]
+        for im in individual_masks[1:]:
+            obj_focus_mask += im
 
     #for each hsv block, again separate by connectivity
     all_center_masses = []
@@ -270,6 +270,7 @@ def grasps_within_pile(color_mask):
     all_masks = []
     for i, obj_mask in enumerate(individual_masks):
         center_masses, directions, masks = get_cluster_info(obj_mask)
+        # color_focused = color_mask.mask_binary(obj_focus_mask)
         # display_grasps(color_focused, center_masses, directions, name="debug_imgs/grasps" + str(i))
         directions = [d/np.linalg.norm(d) for d in directions]
 

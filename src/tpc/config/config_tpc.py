@@ -69,4 +69,5 @@ SINGULATE_END_FACTOR = 0.75
 """PATHS AND DATASET PARAMETERS"""
 ROOT_DIR = '/media/autolab/1tb/data/'
 DATA_PATH = ROOT_DIR + 'tpc/'
-ROLLOUT_PATH = DATA_PATH+'rollouts_setup1/'
+ROLLOUT_PATH = DATA_PATH+'rollouts-2-25/'
+#ROLLOUT_PATH = DATA_PATH+'rollouts_setup1/'
