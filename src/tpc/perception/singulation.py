@@ -36,7 +36,7 @@ class Singulation():
         self.goal_p = goal_p
         self.waypoints = waypoints
         self.gripper_angle = gripper_angle 
-        if self.goal_p == None or self.waypoints == None or self.gripper_angle == None:
+        if self.goal_p is None or self.waypoints is None or self.gripper_angle is None:
             self.obj_mask = self.obj_masks[0]
             self.other_obj_masks = self.obj_masks[1:]
             self.compute_singulation()
@@ -169,7 +169,7 @@ class Singulation():
         mean :obj:`numpy.ndarray`
             1x2 vector, mean of border pixels
         """
-        if self.goal_p == None:
+        if self.goal_p is None:
             self.goal_p = self.get_goal_pixel()
 
         goal_dir = self.goal_p - mean
@@ -209,7 +209,7 @@ class Singulation():
         :obj: `numpy.ndarray`
             1x2 vector representing the goal pixel
         """
-        if self.waypoints == None or self.gripper_angle == None or self.goal_p == None:
+        if self.waypoints is None or self.gripper_angle is None or self.goal_p is None:
             self.compute_singulation()
 
         return self.waypoints, self.gripper_angle, self.goal_p
@@ -218,7 +218,7 @@ class Singulation():
         """
         saves visualization of singulation trajectories
         """
-        if self.waypoints == None or self.gripper_angle == None or self.goal_p == None:
+        if self.waypoints is None or self.gripper_angle is None or self.goal_p is None:
             self.compute_singulation()
 
         plt.figure()

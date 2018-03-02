@@ -21,27 +21,19 @@ def run_connected_components(img, viz=False):
         if true, displays proposed grasps
     Returns
     -------
-    :obj:tuple of
-        :obj:list of `numpy.ndarray`
-            cluster center of masses
-        :obj:list of `numpy.ndarray`
-            cluster grasp angles
-        :obj:list of `BinaryImage`
-            cluster masks
+    :obj:list of `Group`
     """
 
     fg = img.foreground_mask(cfg.COLOR_TOL, ignore_black=True)
     if viz:
         cv2.imwrite("debug_imgs/mask.png", fg.data)
-    # img = cv2.medianBlur(img, 3)
 
-    center_masses, directions, masks = get_cluster_info(fg)
-    #would like to filter out clusters that are just lines here
+    groups = get_cluster_info(fg)
 
     if viz:
-        display_grasps(img, center_masses, directions)
+        display_grasps(img, groups)
 
-    return center_masses, directions, masks
+    return groups
 
 def draw_point(img, point):
     box_color = (255, 0, 0)
@@ -50,27 +42,26 @@ def draw_point(img, point):
         int(point[1] - box_size):int(point[1] + box_size)] = box_color
     return img
 
-def display_grasps(img, center_masses, directions,name="debug_imgs/grasps"):
+def display_grasps(img, groups,name="debug_imgs/grasps"):
     """ Displays the proposed grasps
     Parameters
     ----------
     img :obj:`ColorImage`
         color image masked to
         white working area
-    center_masses :obj:list of `numpy.ndarray`
-    directions :obj:list of `numpy.ndarray`
+    center_masses :list of `Group`
     Returns
     -------
     :obj:`numpy.ndarray`
         visualization image
     """
-    if len(center_masses) > 0:
+    if len(groups) > 0:
         box_color = (255, 0, 0)
         line_color = box_color[::-1]
         img_data = np.copy(img.data)
-        for i in range(len(center_masses)):
-            cm = center_masses[i]
-            d = directions[i]
+        for i in range(len(groups)):
+            cm = groups[i].cm 
+            d = groups[i].dir
 
             img_data = draw_point(img_data, cm)
 
@@ -239,11 +230,7 @@ def grasps_within_pile(color_mask):
         mask of object cluster
     Returns
     -------
-    :obj:tuple of
-        :obj:list of `numpy.ndarray`
-            grasp center of masses
-        :obj:list of `numpy.ndarray`
-            grasp angles
+    :obj:list of `Group`
     """
     hue_counts, hue_pixels = get_hsv_hist(color_mask)
 
@@ -265,22 +252,18 @@ def grasps_within_pile(color_mask):
             obj_focus_mask += im
 
     #for each hsv block, again separate by connectivity
-    all_center_masses = []
-    all_directions = []
-    all_masks = []
+    all_groups = []
     for i, obj_mask in enumerate(individual_masks):
-        center_masses, directions, masks = get_cluster_info(obj_mask)
-        # color_focused = color_mask.mask_binary(obj_focus_mask)
-        # display_grasps(color_focused, center_masses, directions, name="debug_imgs/grasps" + str(i))
-        directions = [d/np.linalg.norm(d) for d in directions]
+        groups = get_cluster_info(obj_mask)
 
-        for grasp_info in zip(center_masses, directions, masks):
+        for group in groups:
             #matches endpoints of line in visualization
-            grasp_top = grasp_info[0] + grasp_info[1] * cfg.LINE_SIZE/2
-            grasp_bot = grasp_info[0] - grasp_info[1] * cfg.LINE_SIZE/2
-            if is_valid_grasp(grasp_top, obj_focus_mask) and is_valid_grasp(grasp_bot, obj_focus_mask):
-                all_center_masses.append(grasp_info[0])
-                all_directions.append(grasp_info[1])
-                all_masks.append(grasp_info[2])
+            cm = group.cm
+            d = group.dir
 
-    return all_center_masses, all_directions, all_masks
+            grasp_top = cm + d * cfg.LINE_SIZE/2
+            grasp_bot = cm - d * cfg.LINE_SIZE/2
+            if is_valid_grasp(grasp_top, obj_focus_mask) and is_valid_grasp(grasp_bot, obj_focus_mask):
+                all_groups.append(group)
+
+    return all_groups

@@ -10,13 +10,17 @@ from perception import ColorImage, BinaryImage
 import IPython
 import tpc.config.config_tpc as cfg
 
-def generate_groups(img):
+def generate_groups(img, orig_shape, scaled_shape):
     """ Finds groups using adjacency
     (dist_tol = 0)
     Parameters
     ----------
     img :obj:`numpy.ndarray`
         binary foreground image
+    orig_shape : tuple
+        shape of 2D image before scaling down
+    scaled_shape : tuple
+        shape of 2D image after scaling down
     Returns
     -------
     :obj:list of `Group`
@@ -40,7 +44,7 @@ def generate_groups(img):
 
                 #create the group if it does not yet exist
                 if curr_label not in groups_by_label:
-                    groups_by_label[curr_label] = Group(curr_label)
+                    groups_by_label[curr_label] = Group(curr_label, orig_shape, scaled_shape)
                     groups.append(groups_by_label[curr_label])
 
                 groups_by_label[curr_label].add((y, x))
@@ -100,8 +104,8 @@ def merge_groups(groups, dist_tol):
 
     return merged_groups
 
-"""return a list of the smallest n groups"""
 def get_smallest(groups, n):
+    """return a list of the smallest n groups"""
     groups.sort()
     return groups[:min(n, len(groups))]
 
@@ -114,25 +118,21 @@ def get_cluster_info(img):
         mask of objects in working area
     Returns
     -------
-    :obj:tuple of 
-        :obj:list of `numpy.ndarray`
-            cluster center of masses
-        :obj:list of `numpy.ndarray`
-            cluster grasp angles
-        :obj:list of `BinaryImage`
-            cluster masks
+    :obj:list of `Group`
     """
     img_data = img.data
     orig_shape = img_data.shape
     img_data = block_reduce(img_data, block_size = (cfg.SCALE_FACTOR, cfg.SCALE_FACTOR), func = np.mean)
+    scaled_shape = img_data.shape 
+
     dist_tol = cfg.DIST_TOL/cfg.SCALE_FACTOR
 
     #find groups of adjacent foreground pixels
-    groups = generate_groups(img_data)
+    groups = generate_groups(img_data, orig_shape, scaled_shape)
     groups = [g for g in groups if g.area >= cfg.SIZE_TOL/cfg.SCALE_FACTOR]
     groups = merge_groups(groups, dist_tol)
 
-    center_masses = [map(lambda x: x * cfg.SCALE_FACTOR, g.center_mass()) for g in groups]
-    directions = [g.orientation() for g in groups]
-    masks = [BinaryImage(imresize(g.get_mask(img_data.shape),orig_shape)) for g in groups]
-    return center_masses, directions, masks
+    for g in groups:
+        g.compute_info()
+
+    return groups 

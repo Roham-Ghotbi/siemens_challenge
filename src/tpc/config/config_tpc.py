@@ -5,10 +5,10 @@ import numpy as np
 
 """OPTIONS FOR DEMO"""
 #whether to save rollouts
-COLLECT_DATA = True
+COLLECT_DATA = False
 
 #whether to show plots/ask for success
-QUERY = False
+QUERY = True
 
 #whether to attempt multiple grasps from just 1 image; if true, susceptible to error from open loop control
 CHAIN_GRASPS = False

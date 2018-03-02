@@ -1,14 +1,18 @@
-from scipy.spatial import cKDTree
 import numpy as np
-from sklearn.decomposition import PCA
 import IPython
+import cv2
+from sklearn.decomposition import PCA
+from scipy.spatial import cKDTree
+from scipy.misc import imresize
+from perception import ColorImage, BinaryImage
+import tpc.config.config_tpc as cfg
 
 class Group:
     """
     used to group pixels belonging to the same object clusters
     author: Chris Powers
     """
-    def __init__(self, label, points = None):
+    def __init__(self, label, orig_shape, scaled_shape, points = None):
         self.ndim = 2
         if points == None:
             self.points = []
@@ -20,6 +24,13 @@ class Group:
             self.high_coords = [max(self.points, key=lambda x:x[d])[d] for d in range(self.ndim)]
         self.area = len(self.points)
         self.label = label
+
+        self.orig_shape = orig_shape
+        self.scaled_shape = scaled_shape
+
+        self.cm = None 
+        self.dir = None 
+        self.mask = None 
 
     @staticmethod
     def checkDim(p1, p2):
@@ -65,21 +76,6 @@ class Group:
     def __lt__(self, other):
         return self.area < other.area
 
-    def orientation(self):
-        """
-       Major axis vector
-        """
-        # height = self.high_coords[0] - self.low_coords[0]
-        # width = self.high_coords[1] - self.low_coords[1]
-        # return width > height
-        pca = PCA(n_components=2)
-        pca.fit(self.points)
-        # axis = pca.components_[1]
-        #perpendicular to 1st component works better than second component
-        axis = pca.components_[0]
-        axis = [axis[1], -1*axis[0]]
-        return axis/np.linalg.norm(axis)
-
     def add(self, p):
         """
         Insert a new point into the group
@@ -119,11 +115,30 @@ class Group:
     def updateLabel(self, newLabel):
         self.label = newLabel
 
-    def get_mask(self, shape):
-        img = np.zeros(shape)
+    def compute_info(self):
+        self.compute_cm()
+        self.compute_dir()
+        self.compute_mask()
+
+    def compute_mask(self):
+        img = np.zeros(self.scaled_shape)
         for p in self.points:
             img[p[0]][p[1]] = 1
-        return img
 
-    def center_mass(self):
-        return np.mean(self.points, axis=0)
+        self.mask = BinaryImage(imresize(img,self.orig_shape))
+
+    def compute_cm(self):
+        mean = np.mean(self.points, axis=0)
+        self.cm = map(lambda x: x * cfg.SCALE_FACTOR, mean)
+
+    def compute_dir(self):
+        """
+        Major axis vector
+        """
+        pca = PCA(n_components=2)
+        pca.fit(self.points)
+        # axis = pca.components_[1]
+        #perpendicular to 1st component works better than second component
+        axis = pca.components_[0]
+        axis = [axis[1], -1*axis[0]]
+        self.dir = axis/np.linalg.norm(axis)
