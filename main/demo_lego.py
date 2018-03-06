@@ -38,14 +38,14 @@ import sys
 
 from il_ros_hsr.p_pi.tpc.gripper import Lego_Gripper
 from tpc.perception.cluster_registration import run_connected_components, display_grasps, \
-    grasps_within_pile, view_hsv, get_hsv_hist, hsv_classify
-from groups import Group
+    grasps_within_pile, hsv_classify
+from tpc.perception.groups import Group
 
 from tpc.perception.singulation import Singulation
 from tpc.perception.crop import crop_img
 from tpc.data_manager import DataManager
 from tpc.manipulation.primitives import GraspManipulator
-from perception import ColorImage, BinaryImage
+from tpc.perception.image import ColorImage, BinaryImage
 from il_ros_hsr.p_pi.bed_making.table_top import TableTop
 
 import tpc.config.config_tpc as cfg
@@ -147,7 +147,7 @@ class LegoDemo():
         if cfg.COLLECT_DATA and cfg.QUERY:
             print("Any notes? (pushed legos off table, ran into table, etc.)")
             inp = raw_input()
-            return inp 
+            return inp
         else:
             return "no data queried"
 
@@ -162,7 +162,7 @@ class LegoDemo():
         print("SINGULATING")
 
         self.dm.update_traj("action", "singulate")
-        
+
         a = time.time()
         singulator = Singulation(col_img, main_mask, [g.mask for g in to_singulate])
         waypoints, rot, free_pix = singulator.get_singulation()
@@ -280,7 +280,7 @@ class LegoDemo():
         self.dm.update_traj("compute_grasps_times", compute_grasps_times)
         self.dm.update_traj("find_grasps_times", find_grasps_times)
         self.dm.update_traj("find_hsv_times", find_hsv_times)
-        
+
         return to_grasp, to_singulate
 
     def lego_demo(self):
@@ -320,8 +320,8 @@ class LegoDemo():
 
             self.dm.append_traj()
 
-            print "num masses", len(center_masses)
-            if len(center_masses) == 0:
+            print "num masses", len(groups)
+            if len(groups) == 0:
                 print("cleared workspace")
                 self.dm.update_traj("stop_condition", self.get_success("clearing table"))
                 self.dm.overwrite_traj()

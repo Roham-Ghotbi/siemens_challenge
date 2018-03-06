@@ -4,7 +4,7 @@ import IPython
 import cv2
 import os
 import cPickle as pickle
-from perception import ColorImage, BinaryImage
+from tpc.perception.image import ColorImage, BinaryImage
 from tpc.perception.cluster_registration import display_grasps, color_to_binary
 from tpc.perception.singulation import Singulation
 from tpc.data_manager import DataManager
@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     actions_before_crash = []
 
-    to_save_imgs_num = 52 #make it not pltshow
+    to_save_imgs_num = 0 #make it not pltshow
     fail_num = 0
     fail_num_singulate = 0
     dm = DataManager(False)
@@ -107,7 +107,7 @@ if __name__ == "__main__":
                     cms.append(cm)
                     dis.append(di)
                 if rnum == to_save_imgs_num:
-                    display_grasps(ColorImage(c_img), cms, dis, name="debug_imgs/rollout_imgs/r" + str(trajnum))
+                    display_grasps(ColorImage(crop), cms, dis, name="debug_imgs/rollout_imgs/r" + str(trajnum))
                 curr_grasp_successes = 0
                 curr_grasp_attempts = 0
                 for i, s in enumerate(succ):
@@ -121,7 +121,7 @@ if __name__ == "__main__":
                             if not os.path.exists(curr_dir):
                                 os.makedirs(curr_dir)
                             cv2.imwrite(curr_dir + "orig.png", c_img)
-                            display_grasps(ColorImage(c_img), cms, dis, name=curr_dir + "grasps")
+                            display_grasps(ColorImage(crop), cms, dis, name=curr_dir + "grasps")
                             # c_info = display_grasps(ColorImage(c_img), [cms[i]], [dis[i]], name=curr_dir + "grasps")
                             if c_after is not None:
                                 cv2.imwrite(curr_dir + "after.png", c_after)
@@ -168,7 +168,7 @@ if __name__ == "__main__":
                 if rnum == to_save_imgs_num:
                     singulator = Singulation(ColorImage(c_img), color_to_binary(ColorImage(crop)), [], goal_p = free_pix, waypoints = waypoints, gripper_angle=0)
                     singulator.display_singulation(name = "debug_imgs/rollout_imgs/r" + str(trajnum))
-                    cv2.imwrite("debug_imgs/rollout_imgs/r" + str(trajnum) + "crop.png", crop)
+                    # cv2.imwrite("debug_imgs/rollout_imgs/r" + str(trajnum) + "crop.png", crop)
                 if succ != "x" and succ != "?":
                     singulation_attempts += 1
                     if succ == "y":

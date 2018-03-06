@@ -3,7 +3,7 @@ import cv2
 import IPython
 from connected_components import get_cluster_info
 from groups import Group
-from perception import ColorImage, BinaryImage
+from tpc.perception.image import ColorImage, BinaryImage
 import matplotlib.pyplot as plt
 import tpc.config.config_tpc as cfg
 from sklearn.decomposition import PCA
@@ -82,7 +82,7 @@ def dist_mod(m, a, b):
     if diff < m/2:
         return diff
     else:
-        return m - diff  
+        return m - diff
 
 def get_hsv_hist(img):
     """ Separates image into bins by HSV and creates histograms
