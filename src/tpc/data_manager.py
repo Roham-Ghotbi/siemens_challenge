@@ -21,7 +21,7 @@ class DataManager():
 
         self.num_rollouts = next_rollout_num
         self.curr_rollout_dir = self.rollout_dir + folder_name + str(next_rollout_num) + "/"
-        self.curr_rollout_path = curr_rollout_dir + "rollout.p"
+        self.curr_rollout_path = self.curr_rollout_dir + "rollout.p"
         self.curr_rollout = []
         self.curr_traj = {}
 

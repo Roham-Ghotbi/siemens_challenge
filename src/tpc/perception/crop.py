@@ -129,11 +129,11 @@ def crop_img(img, use_preset=False, viz=False):
 
     #compute arc (invisible to camera)
     upper_left = [low_x, high_y]
-    mid_left = [low_x + 10, (low_y + high_y)/2.0]
+    mid_left = [low_x + 10, low_y * 7.0/12.0 + high_y * 5.0/12.0]
     arc_left = [low_x * 3.0/4.0 + high_x * 1.0/4.0, low_y * 3.0/4.0 + high_y * 1.0/4.0]
     arc_mid = [(low_x + high_x)/2.0, low_y * 5.0/6.0 + high_y * 1.0/6.0]
     arc_right = [low_x * 1.0/4.0 + high_x * 3.0/4.0, low_y * 3.0/4.0 + high_y * 1.0/4.0]
-    mid_right = [high_x - 10, (low_y + high_y)/2.0]
+    mid_right = [high_x - 10, low_y * 7.0/12.0 + high_y * 5.0/12.0]
     upper_right = [high_x, high_y]
 
     points = np.array([upper_left, mid_left, arc_left, arc_mid, arc_right, mid_right, upper_right])

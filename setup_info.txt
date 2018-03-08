@@ -1,0 +1,5 @@
+To set up the lego demo:
+position table to align with tape.
+Position white cardboard so that horizontal lines align with close edge of table and left edge is 3 lego units from left edge of table.
+Cover with white sheet
+Can verify that it aligns in rviz (look at MarkerArray-collision_environment_marker)

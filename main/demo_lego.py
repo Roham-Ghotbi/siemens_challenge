@@ -45,7 +45,7 @@ from tpc.perception.singulation import Singulation
 from tpc.perception.crop import crop_img
 from tpc.data_manager import DataManager
 from tpc.manipulation.primitives import GraspManipulator
-from tpc.perception.image import ColorImage, BinaryImage
+from perception import ColorImage, BinaryImage
 from il_ros_hsr.p_pi.bed_making.table_top import TableTop
 
 import tpc.config.config_tpc as cfg
@@ -65,7 +65,6 @@ class LegoDemo():
 
         self.omni_base = self.robot.get('omni_base')
         self.whole_body = self.robot.get('whole_body')
-
 
         self.side = 'BOTTOM'
 
@@ -87,6 +86,10 @@ class LegoDemo():
         self.suction = Suction_Gripper(self.gp, self.cam, self.com.Options, self.robot.get('suction'))
 
         self.gm = GraspManipulator(self.gp, self.gripper, self.suction, self.whole_body, self.omni_base, self.tt)
+        
+        self.collision_world = hsrb_interface.collision_world.CollisionWorld("global_collision_world")
+        self.collision_world.remove_all()
+        self.collision_world.add_box(x=.8,y=.9,z=0.5,pose=geometry.pose(y=1.4,z=0.15),frame_id='map')
 
         print "after thread"
 
@@ -151,12 +154,13 @@ class LegoDemo():
         else:
             return "no data queried"
 
-    def run_singulation(self, col_img, main_mask, to_singulate):
+    def run_singulation(self, col_img, main_mask, d_img, to_singulate):
         """
         Parameters
         ----------
         col_img : `ColorImage`
         main_mask : `BinaryImage`
+        d_img : 'DepthImage'
         to_singulate : list of `Group`
         """
         print("SINGULATING")
@@ -176,7 +180,7 @@ class LegoDemo():
         self.dm.overwrite_traj()
 
         a = time.time()
-        self.gm.singulate(waypoints, rot, c_img, d_img, expand=True)
+        self.gm.singulate(waypoints, rot, col_img.data, d_img, expand=True)
         self.dm.update_traj("execute_singulate_time", time.time() - a)
         self.dm.update_traj("singulate_success", self.get_success("singulation"))
         self.dm.overwrite_traj()
@@ -330,10 +334,11 @@ class LegoDemo():
 
             to_grasp, to_singulate = self.clusters_to_actions(groups, col_img, d_img, workspace_img)
 
+            self.whole_body.collision_world = self.collision_world 
             if len(to_grasp) > 0:
                 self.run_grasps(workspace_img, to_grasp)
             else:
-                self.run_singulation(col_img, main_mask, to_singulate)
+                self.run_singulation(col_img, main_mask, d_img, to_singulate)
 
             self.dm.update_traj("notes", self.get_str())
 

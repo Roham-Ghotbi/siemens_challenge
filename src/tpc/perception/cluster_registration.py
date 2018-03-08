@@ -3,7 +3,7 @@ import cv2
 import IPython
 from connected_components import get_cluster_info
 from groups import Group
-from tpc.perception.image import ColorImage, BinaryImage
+from perception import ColorImage, BinaryImage
 import matplotlib.pyplot as plt
 import tpc.config.config_tpc as cfg
 from sklearn.decomposition import PCA
