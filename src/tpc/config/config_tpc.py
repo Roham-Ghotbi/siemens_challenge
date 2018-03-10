@@ -5,7 +5,7 @@ import numpy as np
 
 """OPTIONS FOR DEMO"""
 #whether to save rollouts
-COLLECT_DATA = False
+COLLECT_DATA = True
 
 #whether to show plots/ask for success
 QUERY = True
@@ -69,5 +69,5 @@ SINGULATE_END_FACTOR = 0.75
 """PATHS AND DATASET PARAMETERS"""
 ROOT_DIR = '/media/autolab/1tb/data/'
 DATA_PATH = ROOT_DIR + 'tpc/'
-ROLLOUT_PATH = DATA_PATH+'rollouts-2-25/'
+ROLLOUT_PATH = DATA_PATH+'rollouts-3-9/'
 #ROLLOUT_PATH = DATA_PATH+'rollouts_setup1/'

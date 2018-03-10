@@ -68,11 +68,14 @@ def display_grasps(img, groups,name="debug_imgs/grasps"):
             p0 = tuple((cm - d * cfg.LINE_SIZE/2)[::-1].astype('uint32'))
             p1 = tuple((cm + d * cfg.LINE_SIZE/2)[::-1].astype('uint32'))
             cv2.line(img_data, p0, p1, line_color, 2)
-        plt.figure()
-        plt.imshow(img_data)
-        cv2.imwrite(name + ".png", img_data)
+        #BGR to RGB
+        rgb = np.fliplr(image_data.reshape(-1,3)).reshape(image_data.shape)
+        plt.imshow(rgb)
+        plt.axis('off')
+        plt.savefig(name + ".png")  
         if cfg.QUERY:
             plt.show()
+
 
 def dist_mod(m, a, b):
     """

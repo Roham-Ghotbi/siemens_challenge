@@ -148,7 +148,7 @@ class LegoDemo():
         :str: arbitary value
         """
         if cfg.COLLECT_DATA and cfg.QUERY:
-            print("Any notes? (pushed legos off table, ran into table, etc.)")
+            print("Any notes? (pushed legos off table, ran into table, etc.) (no if none)")
             inp = raw_input()
             return inp
         else:
@@ -191,7 +191,7 @@ class LegoDemo():
         Parameters
         ----------
         workspace_img : `ColorImage`
-        to_singulate : list of tuple of:
+        to_grasp : list of tuple of:
             (`Group`, grasp_pose, suction_pose, class_num)
         """
 
