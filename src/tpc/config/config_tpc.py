@@ -67,7 +67,8 @@ SINGULATE_START_FACTOR = 1.2
 SINGULATE_END_FACTOR = 0.75
 
 """PATHS AND DATASET PARAMETERS"""
-ROOT_DIR = '/Users/chrispowers/Documents/research/tpc/'
+#ROOT_DIR = '/Users/chrispowers/Documents/research/tpc/'
+ROOT_DIR = '/Users/kkpan_000/Documents/Me/My Real Documents/Berkeley/Research/tpc/'
 DATA_PATH = ROOT_DIR + 'data/'
-ROLLOUT_PATH = DATA_PATH+'rollouts-2-25/'
+ROLLOUT_PATH = DATA_PATH+'rollouts/'
 #ROLLOUT_PATH = DATA_PATH+'rollouts_setup1/'
