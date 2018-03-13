@@ -6,7 +6,7 @@ from scipy.misc import imresize
 from union import UnionFind
 from skimage.measure import block_reduce
 from groups import Group
-from perception import ColorImage, BinaryImage
+from tpc.perception.image import ColorImage, BinaryImage
 import IPython
 import tpc.config.config_tpc as cfg
 
@@ -123,7 +123,7 @@ def get_cluster_info(img):
     img_data = img.data
     orig_shape = img_data.shape
     img_data = block_reduce(img_data, block_size = (cfg.SCALE_FACTOR, cfg.SCALE_FACTOR), func = np.mean)
-    scaled_shape = img_data.shape 
+    scaled_shape = img_data.shape
 
     dist_tol = cfg.DIST_TOL/cfg.SCALE_FACTOR
 
@@ -135,4 +135,4 @@ def get_cluster_info(img):
     for g in groups:
         g.compute_info()
 
-    return groups 
+    return groups

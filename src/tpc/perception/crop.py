@@ -7,8 +7,13 @@ import numpy as np
 import cv2
 import IPython
 from skimage.draw import polygon
-from perception import BinaryImage
+
 import tpc.config.config_tpc as cfg
+import importlib
+img = importlib.import_module(cfg.IMG_MODULE)
+ColorImage = getattr(img, 'ColorImage')
+BinaryImage = getattr(img, 'BinaryImage')
+
 from tpc.perception.cluster_registration import draw_point
 import cPickle as pickle
 

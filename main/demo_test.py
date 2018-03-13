@@ -13,10 +13,14 @@ from tpc.perception.cluster_registration import run_connected_components, displa
 from tpc.perception.groups import Group
 from tpc.perception.singulation import Singulation
 from tpc.perception.crop import crop_img
-from tpc.perception.image import ColorImage, BinaryImage
+
+from tpc.data_manager import DataManager
 
 import tpc.config.config_tpc as cfg
-from tpc.data_manager import DataManager
+import importlib
+img = importlib.import_module(cfg.IMG_MODULE)
+ColorImage = getattr(img, 'ColorImage')
+BinaryImage = getattr(img, 'BinaryImage')
 
 if __name__ == "__main__":
     c_img = cv2.imread("debug_imgs/singulate_fails/0/orig.png")

@@ -1,237 +1,115 @@
-import tpc.config.config_tpc as cfg
 import numpy as np
 import IPython
 import cv2
 import os
+import matplotlib.pyplot as plt
 import cPickle as pickle
-from tpc.perception.image import ColorImage, BinaryImage
 from tpc.perception.cluster_registration import display_grasps, color_to_binary
 from tpc.perception.singulation import Singulation
 from tpc.data_manager import DataManager
+import tpc.config.config_tpc as cfg
+import importlib
+img = importlib.import_module(cfg.IMG_MODULE)
+ColorImage = getattr(img, 'ColorImage')
+BinaryImage = getattr(img, 'BinaryImage')
+
+def init_all_times():
+    """
+    For each time recorded, initialize a dictionary entry of the form [number of occurences, total time]
+    """
+    all_times = dict()
+    for time_type in ["connected_components_time", "compute_grasps_times", "find_grasps_times", "find_hsv_times",
+                "execute_grasp_times", "compute_singulate_time", "execute_singulate_time"]:
+        all_times[time_type] = [0.0, 0.0]
+    return all_times
+
+def accumulate_all_times(all_times):
+    """
+    Print the average value of each time type
+    """
+    for time_type in all_times.keys():
+        stored = all_times[time_type]
+        avg_val = stored[1]/stored[0] if stored[0] != 0 else 0
+        print("Average " + time_type + " was " + "%.1f" % avg_val)
+
+def add_traj_times(traj, all_times):
+    """
+    Add all of a trajectories timing data to the dictionary
+    Some times were stored as a list (if operation occured multiple times per trajectory)
+    """
+    for time_type in all_times.keys():
+        if time_type in traj:
+            curr = traj[time_type]
+            if not(type(curr) is list):
+                curr = [curr]
+            for c in curr:
+                stored = all_times[time_type]
+                all_times[time_type] = [stored[0] + 1.0, stored[1] + c]
+    return all_times
+
+def init_all_successes():
+    """
+    For singulations and grasps, the ith element of the array is [#successes, #attempts] with i legos on the table
+    """
+    grasp_succ = [[0.0, 0.0] for i in range(1, 17)]
+    singulate_succ = [[0.0, 0.0] for i in range(1, 17)]
+    return grasp_succ, singulate_succ
+
+def accumulate_all_successes(grasp_succ, singulate_succ):
+    """
+    Plot success rate by number of legos
+    """
+    grasp_percents = [100.0 * s[0]/s[1] if s[1] != 0 else 0 for s in grasp_succ]
+    singulate_percents = [100.0 * s[0]/s[1] if s[1] != 0 else 0 for s in singulate_succ]
+    x_axis = [i for i in range(1, 17)]
+
+    print(grasp_succ)
+    print(grasp_percents)
+    plt.plot(x_axis, grasp_percents)
+    plt.xlabel("Number of legos")
+    plt.ylabel("Percent grasps successful")
+    plt.savefig("grasp_succ.png")
+
+    plt.figure()
+    plt.plot(x_axis, singulate_percents)
+    plt.xlabel("Number of legos")
+    plt.ylabel("Percent singulations successful")
+    plt.savefig("singulate_succ.png")
+
+    grasp_combined = zip(*grasp_succ)
+    total_grasp_percent = 100.0 * sum(grasp_combined[0])/sum(grasp_combined[1])
+    print("%.1f percent of grasps succeeded" % total_grasp_percent)
+
+    singulate_combined = zip(*singulate_succ)
+    total_singulate_percent = 100.0 * sum(singulate_combined[0])/sum(singulate_combined[1])
+    print("%.1f percent of singulations succeeded" % total_singulate_percent)
+
+def add_traj_successes(traj, grasp_succ, singulate_succ):
+    """
+    Adds whether the trajectory succeeded or failed (by action type and number of legos)
+    """
+    if "action" in traj:
+        n = int(traj["num_legos"]) - 1 #convert to 0-indexed
+        if traj["action"] == "grasp":
+            for t in traj["grasp_successes"]:
+                stored = grasp_succ[n]
+                succ_bool = 1.0 if t == "y" else 0.0
+                grasp_succ[n] = [stored[0] + succ_bool, stored[1] + 1.0]
+        elif traj["action"] == "singulate":
+            stored = singulate_succ[n]
+            succ_bool = 1.0 if traj["singulate_success"] == "y" else 0.0
+            singulate_succ[n] = [stored[0] + succ_bool, stored[1] + 1.0]
+    return grasp_succ, singulate_succ
 
 if __name__ == "__main__":
-    connected_components_times = []
-    compute_grasps_times = []
-    find_grasps_times = []
-    execute_grasp_times = []
-    execute_singulation_times = []
-    compute_singulation_times = []
+    dm = DataManager()
 
-    grasp_successes = 0
-    grasp_attempts = 0
-
-    singulation_successes = 0
-    singulation_attempts = 0
-
-    color_successes = 0
-    color_attempts = 0
-
-    #for key k, corresponds to a list
-    #each time k singulations are followed by succeeding in m out of n grasps, add (m, n) to list
-    #this ignores some data from crashes between singulates and grasps
-    #groups grasps in different but sequential trajectoreis
-    num_singulates_to_num_grasps = {}
-
-
-    grasp_crashes = 0
-    singulate_crashes = 0
-    completions = 0
-    false_completions = 0
-    total_stopped = 0
-
-    grasps_per_rollout = []
-    singulates_per_rollout = []
-
-    actions_before_crash = []
-
-    to_save_imgs_num = 0 #make it not pltshow
-    fail_num = 0
-    fail_num_singulate = 0
-    dm = DataManager(False)
-    # for rnum in range(dm.num_rollouts):
-    for rnum in range(to_save_imgs_num, to_save_imgs_num + 1):
+    all_times = init_all_times()
+    grasp_succ, singulate_succ = init_all_successes()
+    for rnum in range(dm.num_rollouts):
         rollout = dm.read_rollout(rnum)
-        trajnum = 0
-        rollout_grasps = 0
-        rollout_singulates = 0
-        actions = [t["action"] if "action" in t else None for t in rollout]
-
-        curr_singulate_sequence = 0
-        curr_grasp_sequence_s = 0
-        curr_grasp_sequence_t = 0
-        last_was_grasp = True
-
-        prev_singulate_info = None
-        for traj_ind, traj in enumerate(rollout):
-            c_img = traj["c_img"]
-            d_img = traj["d_img"]
-            c_after = None
-            if "c_img_result" in traj:
-                c_after = traj["c_img_result"]
-            # d_after = traj["d_img_result"]
-            crop = traj["crop"]
-            times = []
-            if "action" in traj:
-                connected_components_times.append(traj["connected_components_time"])
-                compute_grasps_times.append(traj["compute_grasps_time"])
-                find_grasps_times.append(traj["find_grasps_time"])
-                action = traj["action"]
-                info = traj["info"]
-                succ = traj["success"]
-
-            #some rollouts were made before this statistic was added
-            if "stop_condition" in traj:
-                if traj["stop_condition"] != "none":
-                    actions_before_crash.append(traj_ind)
-                    total_stopped += 1
-                    stop = traj["stop_condition"]
-                    if stop == "y":
-                        completions += 1
-                    elif stop == "n":
-                        false_completions += 1
-                    elif stop == "crash":
-                        if action == "grasp":
-                            grasp_crashes += 1
-                        elif action =="singulate":
-                            singulate_crashes += 1
-
-            #check key in case crash during computation of grasps
-            if action == "grasp":
-                last_was_grasp = True
-                if "execute_time" in traj:
-                    execute_grasp_times += traj["execute_time"]
-                cms = []
-                dis = []
-                for grasp in info:
-                    cm, di, mask, class_num = grasp
-                    cms.append(cm)
-                    dis.append(di)
-                if rnum == to_save_imgs_num:
-                    display_grasps(ColorImage(crop), cms, dis, name="debug_imgs/rollout_imgs/r" + str(trajnum))
-                curr_grasp_successes = 0
-                curr_grasp_attempts = 0
-                for i, s in enumerate(succ):
-                    if s != "?" and s != "x":
-                        c = traj["color"][i]
-                        curr_grasp_attempts += 1
-                        if s == "y":
-                            curr_grasp_successes += 1
-                        else:
-                            curr_dir = "debug_imgs/grasp_fails/" + str(fail_num) + "/"
-                            if not os.path.exists(curr_dir):
-                                os.makedirs(curr_dir)
-                            cv2.imwrite(curr_dir + "orig.png", c_img)
-                            display_grasps(ColorImage(crop), cms, dis, name=curr_dir + "grasps")
-                            # c_info = display_grasps(ColorImage(c_img), [cms[i]], [dis[i]], name=curr_dir + "grasps")
-                            if c_after is not None:
-                                cv2.imwrite(curr_dir + "after.png", c_after)
-                            fail_num += 1
-                        if c == "y":
-                            color_successes += 1
-                grasp_attempts += curr_grasp_attempts
-                color_attempts += curr_grasp_attempts
-                rollout_grasps += curr_grasp_attempts
-                grasp_successes += curr_grasp_successes
-                curr_grasp_sequence_t += curr_grasp_attempts
-                curr_grasp_sequence_s += curr_grasp_successes
-                prev_singulate_info = None
-            elif action == "singulate":
-                if last_was_grasp and curr_grasp_sequence_t > 0:
-                    if curr_singulate_sequence not in num_singulates_to_num_grasps:
-                        num_singulates_to_num_grasps[curr_singulate_sequence] = []
-                    num_singulates_to_num_grasps[curr_singulate_sequence].append((curr_grasp_sequence_s, curr_grasp_sequence_t))
-                    curr_grasp_sequence_s = 0
-                    curr_grasp_sequence_t = 0
-                    curr_singulate_sequence = 0
-                if not last_was_grasp and prev_singulate_info is not None:
-                    #the number of failure recorded here may be more than
-                    #the number of non-0,1 singulation sequences recorded elsewhere
-                    #because these sequences do not have to end in a grasp
-                    prev_img, prev_after, prev_info, prev_crop = prev_singulate_info
-                    curr_dir = "debug_imgs/singulate_fails/" + str(fail_num_singulate) + "_"
-                    # if not os.path.exists(curr_dir):
-                    #     os.makedirs(curr_dir)
-                    cv2.imwrite(curr_dir + "orig.png", prev_img)
-                    prev_way, prev_rot, prev_free = prev_info
-                    # display_singulation(prev_way, ColorImage(prev_crop), prev_free, name=curr_dir + "singulations")
-                    if prev_after is not None:
-                        cv2.imwrite(curr_dir + "after.png", prev_after)
-                    #re-run singulation (see if new alg is better)
-                    fail_num_singulate += 1
-                last_was_grasp = False
-                curr_singulate_sequence += 1
-                rollout_singulates += 1
-                compute_singulation_times.append(traj["compute_singulate_time"])
-                if "execute_time" in traj:
-                    execute_singulation_times.append(traj["execute_time"])
-                waypoints, rot, free_pix = info
-                if rnum == to_save_imgs_num:
-                    singulator = Singulation(ColorImage(c_img), color_to_binary(ColorImage(crop)), [], goal_p = free_pix, waypoints = waypoints, gripper_angle=0)
-                    singulator.display_singulation(name = "debug_imgs/rollout_imgs/r" + str(trajnum))
-                    # cv2.imwrite("debug_imgs/rollout_imgs/r" + str(trajnum) + "crop.png", crop)
-                if succ != "x" and succ != "?":
-                    singulation_attempts += 1
-                    if succ == "y":
-                        singulation_successes += 1
-                    prev_singulate_info = (c_img, c_after, info, crop)
-            trajnum += 1
-        #if grasp followed by crash
-        if curr_grasp_sequence_t > 0:
-            if curr_singulate_sequence not in num_singulates_to_num_grasps:
-                num_singulates_to_num_grasps[curr_singulate_sequence] = []
-            num_singulates_to_num_grasps[curr_singulate_sequence].append((curr_grasp_sequence_s, curr_grasp_sequence_t))
-
-        grasps_per_rollout.append(rollout_grasps)
-        singulates_per_rollout.append(rollout_singulates)
-
-
-    print("SUCCESS RATES")
-    percent = lambda succ, tot: "(" + str((100.0 * succ)/tot) + "%)"
-    succ_rate = lambda succ, tot, name: "Succeded in " + str(succ) + " out of " + str(tot) + " " + name + " " + percent(succ, tot)
-    #easy to quantify grasp success
-    print(succ_rate(grasp_successes, grasp_attempts, "grasps"))
-    #singulation success somewhat hard to quantify- yes if it seems to separate a pile into multiple pile
-    print(succ_rate(singulation_successes, singulation_attempts, "singulations"))
-    #easy to quantify color success
-    print(succ_rate(color_successes, color_attempts, "color identifications"))
-
-    avg = lambda times: str(sum(times)/(1.0 * len(times)))
-
-    #more quantifiable metric for singulation (see description above)
-    #grasp following 0 singulation could be at start of run (some runs crash -> restart has grasps)
-    #above is also the reason for ignoring singulations not followed by grasps
-    print("num singulation to num successful grasps/num attempted grasps until next singulation or crash")
-    print(num_singulates_to_num_grasps)
-    num_singulates_to_avg_grasps = {}
-    for num_singulates in num_singulates_to_num_grasps.keys():
-        num_grasp = num_singulates_to_num_grasps[num_singulates]
-        num_successes = [t[0] for t in num_grasp]
-        num_trials = len(num_successes)
-        num_singulates_to_avg_grasps[num_singulates] = (avg(num_successes), num_trials)
-    print("num singulation to (avg num successful grasps until next singulation or crash, num trials)")
-    #should add variance for each (some have a lot more data)
-    print(num_singulates_to_avg_grasps)
-
-
-    #just a metric of where crashes occur (might not be related to algorithm)
-    if total_stopped > 0:
-        print("STOPPING CONDITIONS")
-        print("Out of " + str(total_stopped) + " rollouts with crash information, " +
-            str(grasp_crashes) + " " + percent(grasp_crashes, total_stopped) + " ended in crashes after grasping, " +
-            str(singulate_crashes) + " " + percent(singulate_crashes, total_stopped) + " ended in crashes after singulating, " +
-            str(completions) + " " + percent(completions, total_stopped) + " cleared the table completely, and " +
-            str(false_completions) + " " + percent(false_completions, total_stopped) + " stopped before clearing the table.")
-
-    print("ACTION BREAKDOWN")
-    print("number of rollouts: " + str(dm.num_rollouts - 1))
-    print("average grasps per rollout: " + avg(grasps_per_rollout))
-    print("average singulations per rollout: " + avg(singulates_per_rollout))
-    print("average actions before crashs: " + avg(actions_before_crash))
-
-    print("TIMES")
-    print("average connected components time: " + avg(connected_components_times))
-    print("average compute grasps time: " + avg(compute_grasps_times))
-    print("average find grasps time: " + avg(find_grasps_times))
-    print("average execute grasp time: " + avg(execute_grasp_times))
-    print("average execute singulation time: " + avg(execute_singulation_times))
-    print("average compute singulation time: " + avg(compute_singulation_times))
+        for traj in rollout:
+            all_times = add_traj_times(traj, all_times)
+            grasp_succ, singulate_succ = add_traj_successes(traj, grasp_succ, singulate_succ)
+    accumulate_all_times(all_times)
+    accumulate_all_successes(grasp_succ, singulate_succ)

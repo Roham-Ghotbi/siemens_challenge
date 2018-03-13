@@ -4,8 +4,12 @@ import cv2
 from sklearn.decomposition import PCA
 from scipy.spatial import cKDTree
 from scipy.misc import imresize
-from perception import ColorImage, BinaryImage
+
 import tpc.config.config_tpc as cfg
+import importlib
+img = importlib.import_module(cfg.IMG_MODULE)
+ColorImage = getattr(img, 'ColorImage')
+BinaryImage = getattr(img, 'BinaryImage')
 
 class Group:
     """
@@ -28,9 +32,9 @@ class Group:
         self.orig_shape = orig_shape
         self.scaled_shape = scaled_shape
 
-        self.cm = None 
-        self.dir = None 
-        self.mask = None 
+        self.cm = None
+        self.dir = None
+        self.mask = None
 
     @staticmethod
     def checkDim(p1, p2):

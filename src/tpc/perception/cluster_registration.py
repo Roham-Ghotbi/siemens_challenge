@@ -3,11 +3,15 @@ import cv2
 import IPython
 from connected_components import get_cluster_info
 from groups import Group
-from perception import ColorImage, BinaryImage
 import matplotlib.pyplot as plt
-import tpc.config.config_tpc as cfg
 from sklearn.decomposition import PCA
 import time
+
+import tpc.config.config_tpc as cfg
+import importlib
+img = importlib.import_module(cfg.IMG_MODULE)
+ColorImage = getattr(img, 'ColorImage')
+BinaryImage = getattr(img, 'BinaryImage')
 
 def run_connected_components(img, viz=False):
     """ Generates mask for
@@ -60,7 +64,7 @@ def display_grasps(img, groups,name="debug_imgs/grasps"):
         line_color = box_color[::-1]
         img_data = np.copy(img.data)
         for i in range(len(groups)):
-            cm = groups[i].cm 
+            cm = groups[i].cm
             d = groups[i].dir
 
             img_data = draw_point(img_data, cm)
@@ -72,7 +76,7 @@ def display_grasps(img, groups,name="debug_imgs/grasps"):
         rgb = np.fliplr(image_data.reshape(-1,3)).reshape(image_data.shape)
         plt.imshow(rgb)
         plt.axis('off')
-        plt.savefig(name + ".png")  
+        plt.savefig(name + ".png")
         if cfg.QUERY:
             plt.show()
 
@@ -113,7 +117,7 @@ def get_hsv_hist(img):
             sat = pix[1]
             #ignore white
             if not (sat < cfg.WHITE_FACTOR * cfg.SAT_RANGE):
-                #black is its own bin 
+                #black is its own bin
                 if val < cfg.BLACK_FACTOR * cfg.VALUE_RANGE:
                     bin_hue = -1
                 else:
@@ -177,7 +181,7 @@ def class_num_to_name(class_num):
     """ Gets the color name for the index
     Parameters
     ----------
-    class_num :integer 
+    class_num :integer
         class number from 0 to 7
     Returns
     -------
@@ -205,7 +209,7 @@ def is_valid_grasp(point, focus_mask):
     """
     ymid = int(point[0])
     xmid = int(point[1])
-    d = cfg.CHECK_RANGE 
+    d = cfg.CHECK_RANGE
 
     check_box = focus_mask.data[ymid - d:ymid + d, xmid - d:xmid + d]
     num_nonzero = np.sum(check_box > 0)

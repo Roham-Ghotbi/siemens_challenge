@@ -67,7 +67,14 @@ SINGULATE_START_FACTOR = 1.2
 SINGULATE_END_FACTOR = 0.75
 
 """PATHS AND DATASET PARAMETERS"""
-ROOT_DIR = '/media/autolab/1tb/data/'
-DATA_PATH = ROOT_DIR + 'tpc/'
+#convenience parameter to change paths based on machine
+on_autolab = False
+if on_autolab:
+	ROOT_DIR = '/media/autolab/1tb/data/'
+	DATA_PATH = ROOT_DIR + 'tpc/'
+	IMG_MODULE = 'perception'
+else:
+	ROOT_DIR = '/Users/chrispowers/Documents/research/tpc/'
+	DATA_PATH = ROOT_DIR + 'data/'
+	IMG_MODULE = 'tpc.perception.image'
 ROLLOUT_PATH = DATA_PATH+'rollouts-3-9/'
-#ROLLOUT_PATH = DATA_PATH+'rollouts_setup1/'

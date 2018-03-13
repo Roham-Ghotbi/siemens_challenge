@@ -45,12 +45,14 @@ from tpc.perception.singulation import Singulation
 from tpc.perception.crop import crop_img
 from tpc.data_manager import DataManager
 from tpc.manipulation.primitives import GraspManipulator
-from perception import ColorImage, BinaryImage
 from il_ros_hsr.p_pi.bed_making.table_top import TableTop
+from il_ros_hsr.core.rgbd_to_map import RGBD2Map
 
 import tpc.config.config_tpc as cfg
-
-from il_ros_hsr.core.rgbd_to_map import RGBD2Map
+import importlib
+img = importlib.import_module(cfg.IMG_MODULE)
+ColorImage = getattr(img, 'ColorImage')
+BinaryImage = getattr(img, 'BinaryImage')
 
 class LegoDemo():
 
@@ -86,7 +88,7 @@ class LegoDemo():
         self.suction = Suction_Gripper(self.gp, self.cam, self.com.Options, self.robot.get('suction'))
 
         self.gm = GraspManipulator(self.gp, self.gripper, self.suction, self.whole_body, self.omni_base, self.tt)
-        
+
         self.collision_world = hsrb_interface.collision_world.CollisionWorld("global_collision_world")
         self.collision_world.remove_all()
         self.collision_world.add_box(x=.8,y=.9,z=0.5,pose=geometry.pose(y=1.4,z=0.15),frame_id='map')
@@ -274,11 +276,11 @@ class LegoDemo():
                     pose,rot = self.gm.compute_grasp(in_group.cm, in_group.dir, d_img)
                     grasp_pose = self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=workspace_img.data)
                     suction_pose = self.suction.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=workspace_img.data)
-                    compute_grasps_times.append(a)
+                    compute_grasps_times.append(time.time() - a)
 
                     a = time.time()
                     class_num = hsv_classify(col_img.mask_binary(in_group.mask))
-                    find_hsv_times.append(a)
+                    find_hsv_times.append(time.time() - a)
 
                     to_grasp.append((in_group, grasp_pose, suction_pose, class_num))
         self.dm.update_traj("compute_grasps_times", compute_grasps_times)
@@ -334,7 +336,7 @@ class LegoDemo():
 
             to_grasp, to_singulate = self.clusters_to_actions(groups, col_img, d_img, workspace_img)
 
-            self.whole_body.collision_world = self.collision_world 
+            self.whole_body.collision_world = self.collision_world
             if len(to_grasp) > 0:
                 self.run_grasps(workspace_img, to_grasp)
             else:

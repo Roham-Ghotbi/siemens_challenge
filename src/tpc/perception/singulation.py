@@ -5,16 +5,20 @@ import matplotlib.pyplot as plt
 import skimage as sk
 from skimage.draw import polygon
 import sys
-from perception import ColorImage, BinaryImage
 import numpy as np
 from sklearn.decomposition import PCA
 import cv2
 import IPython
+
 import tpc.config.config_tpc as cfg
+import importlib
+img = importlib.import_module(cfg.IMG_MODULE)
+ColorImage = getattr(img, 'ColorImage')
+BinaryImage = getattr(img, 'BinaryImage')
 
 class Singulation():
     def __init__(self, img, focus_mask, obj_masks, goal_p=None, waypoints=None, gripper_angle=None):
-        """ 
+        """
         Parameters
         ----------
         img :obj:`ColorImage`
@@ -24,7 +28,7 @@ class Singulation():
         obj_masks :list:obj:`BinaryImage`
             list of crops of object clusters
         """
-        self.img = img.copy() 
+        self.img = img.copy()
         self.focus_mask = focus_mask.copy()
         self.workspace_img = self.img.mask_binary(self.focus_mask)
 
@@ -35,7 +39,7 @@ class Singulation():
         #run computations in advance
         self.goal_p = goal_p
         self.waypoints = waypoints
-        self.gripper_angle = gripper_angle 
+        self.gripper_angle = gripper_angle
         if self.goal_p is None or self.waypoints is None or self.gripper_angle is None:
             self.obj_mask = self.obj_masks[0]
             self.other_obj_masks = self.obj_masks[1:]
@@ -199,7 +203,7 @@ class Singulation():
         self.gripper_angle = 0
 
     def get_singulation(self):
-        """ 
+        """
         Returns
         -------
         :list:obj:`numpy.ndarray`
@@ -239,6 +243,6 @@ class Singulation():
 
         plt.plot(self.goal_p[1], self.goal_p[0], 'bo')
         plt.axis('off')
-        plt.savefig(name + ".png")  
+        plt.savefig(name + ".png")
         if cfg.QUERY:
             plt.show()
