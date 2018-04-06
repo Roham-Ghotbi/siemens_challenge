@@ -43,8 +43,8 @@ from tpc.perception.groups import Group
 
 from tpc.perception.singulation import Singulation
 from tpc.perception.crop import crop_img
-from tpc.data_manager import DataManager
 from tpc.manipulation.primitives import GraspManipulator
+from tpc.data_manager import DataManager
 from il_ros_hsr.p_pi.bed_making.table_top import TableTop
 from il_ros_hsr.core.rgbd_to_map import RGBD2Map
 
@@ -72,11 +72,11 @@ class LegoDemo():
 
         self.cam = RGBD()
         self.com = COM()
-        if not DEBUG:
-            self.com.go_to_initial_state(self.whole_body)
+        # if not DEBUG:
+        self.com.go_to_initial_state(self.whole_body)
 
-            self.tt = TableTop()
-            self.tt.find_table(self.robot)
+        #     self.tt = TableTop()
+        #     self.tt.find_table(self.robot)
 
         self.grasp_count = 0
 
@@ -87,7 +87,7 @@ class LegoDemo():
         self.gripper = Crane_Gripper(self.gp, self.cam, self.com.Options, self.robot.get('gripper'))
         self.suction = Suction_Gripper(self.gp, self.cam, self.com.Options, self.robot.get('suction'))
 
-        self.gm = GraspManipulator(self.gp, self.gripper, self.suction, self.whole_body, self.omni_base, self.tt)
+        self.gm = GraspManipulator(self.gp, self.gripper, self.suction, self.whole_body, self.omni_base)
 
         self.collision_world = hsrb_interface.collision_world.CollisionWorld("global_collision_world")
         self.collision_world.remove_all()
@@ -297,6 +297,7 @@ class LegoDemo():
         self.dm = DataManager()
         self.get_new_grasp = True
 
+        DEBUG = False
         if not DEBUG:
             self.gm.position_head()
 
@@ -307,7 +308,7 @@ class LegoDemo():
         while not (c_img is None or d_img is None):
             print "\n new iteration"
 
-            main_mask = crop_img(c_img, use_preset=True)
+            main_mask = crop_img(c_img, use_preset=True, arc=False)
             col_img = ColorImage(c_img)
             workspace_img = col_img.mask_binary(main_mask)
 
@@ -319,7 +320,7 @@ class LegoDemo():
             self.dm.update_traj("crop", workspace_img.data)
 
             a = time.time()
-            groups = run_connected_components(workspace_img, viz=False)
+            groups = run_connected_components(workspace_img, viz=True)
             self.dm.update_traj("connected_components_time", time.time() - a)
 
             self.dm.update_traj("num_legos", self.get_int())
@@ -344,7 +345,9 @@ class LegoDemo():
 
             self.dm.update_traj("notes", self.get_str())
 
+            #reset to start
             self.whole_body.move_to_go()
+            self.gm.move_to_home()
             self.gm.position_head()
 
             time.sleep(8) #making sure the robot is finished moving

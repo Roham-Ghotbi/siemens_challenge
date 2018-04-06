@@ -6,13 +6,14 @@ import numpy as np
 from tpc.perception.cluster_registration import class_num_to_name
 
 class GraspManipulator():
-    def __init__(self, gp, gripper, suction, whole_body, omni_base, tt):
+    def __init__(self, gp, gripper, suction, whole_body, omni_base):
         self.gp = gp
         self.gripper = gripper
         self.suction = suction
         self.whole_body = whole_body
         self.omni_base = omni_base
-        self.tt = tt
+        # self.tt = tt
+        self.start_pose = self.omni_base.pose
 
     def get_z(self, point, d_img):
         y = int(point[0])
@@ -125,9 +126,13 @@ class GraspManipulator():
         self.whole_body.move_end_effector_pose(geometry.pose(), pose_name)
 
     def position_head(self):
-        self.tt.move_to_pose(self.omni_base,'lower_start')
-        self.whole_body.move_to_joint_positions({'head_tilt_joint':-0.8})
+        # self.tt.move_to_pose(self.omni_base,'lower_start')
+        self.whole_body.move_to_joint_positions({'head_pan_joint': 1.5})
+        self.whole_body.move_to_joint_positions({'head_tilt_joint':-0.9})
+
 
     def move_to_home(self):
-        self.tt.move_to_pose(self.omni_base,'lower_mid')
-        sys.exit()
+        p = self.start_pose
+        self.omni_base.go(p[0], p[1], p[2], 300, relative=False)
+        # self.tt.move_to_pose(self.omni_base,'lower_mid')
+        # sys.exit()

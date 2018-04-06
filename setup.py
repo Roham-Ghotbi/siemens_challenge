@@ -10,5 +10,5 @@ setup(name='tpc',
       author='Michael Laskey',
       author_email='laskeymd@berkeley.edu',
       package_dir={'': 'src'},
-      packages=['tpc', 'tpc.config', 'tpc.perception']
+      packages=['tpc', 'tpc.config', 'tpc.perception', 'tpc.manipulation']
      )

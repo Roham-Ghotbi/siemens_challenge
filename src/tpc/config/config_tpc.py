@@ -5,7 +5,7 @@ import numpy as np
 
 """OPTIONS FOR DEMO"""
 #whether to save rollouts
-COLLECT_DATA = True
+COLLECT_DATA = False
 
 #whether to show plots/ask for success
 QUERY = True
@@ -68,7 +68,7 @@ SINGULATE_END_FACTOR = 0.75
 
 """PATHS AND DATASET PARAMETERS"""
 #convenience parameter to change paths based on machine
-on_autolab = False
+on_autolab = True
 if on_autolab:
 	ROOT_DIR = '/media/autolab/1tb/data/'
 	DATA_PATH = ROOT_DIR + 'tpc/'

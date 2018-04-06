@@ -56,7 +56,7 @@ def set_crop(img_path="debug/imgs/new_setup_crop/crop_sample.png"):
     root.mainloop()
     pickle.dump(points, open("src/tpc/config.crop.p", "wb"))
 
-def crop_img(img, use_preset=False, viz=False):
+def crop_img(img, use_preset=False, arc=True, viz=False):
     """ Crops image polygonally
     to white working area (WA)
     Parameters
@@ -132,16 +132,19 @@ def crop_img(img, use_preset=False, viz=False):
         high_x = max(lower_right[0], upper_right[0])
         high_y = max(upper_left[1], upper_right[1])
 
-    #compute arc (invisible to camera)
-    upper_left = [low_x, high_y]
-    mid_left = [low_x + 10, low_y * 7.0/12.0 + high_y * 5.0/12.0]
-    arc_left = [low_x * 3.0/4.0 + high_x * 1.0/4.0, low_y * 3.0/4.0 + high_y * 1.0/4.0]
-    arc_mid = [(low_x + high_x)/2.0, low_y * 5.0/6.0 + high_y * 1.0/6.0]
-    arc_right = [low_x * 1.0/4.0 + high_x * 3.0/4.0, low_y * 3.0/4.0 + high_y * 1.0/4.0]
-    mid_right = [high_x - 10, low_y * 7.0/12.0 + high_y * 5.0/12.0]
-    upper_right = [high_x, high_y]
+    if arc:
+        #compute arc (invisible to camera)
+        upper_left = [low_x, high_y]
+        mid_left = [low_x + 10, low_y * 7.0/12.0 + high_y * 5.0/12.0]
+        arc_left = [low_x * 3.0/4.0 + high_x * 1.0/4.0, low_y * 3.0/4.0 + high_y * 1.0/4.0]
+        arc_mid = [(low_x + high_x)/2.0, low_y * 5.0/6.0 + high_y * 1.0/6.0]
+        arc_right = [low_x * 1.0/4.0 + high_x * 3.0/4.0, low_y * 3.0/4.0 + high_y * 1.0/4.0]
+        mid_right = [high_x - 10, low_y * 7.0/12.0 + high_y * 5.0/12.0]
+        upper_right = [high_x, high_y]
 
-    points = np.array([upper_left, mid_left, arc_left, arc_mid, arc_right, mid_right, upper_right])
+        points = np.array([upper_left, mid_left, arc_left, arc_mid, arc_right, mid_right, upper_right])
+    else:
+        points = np.array([upper_left, lower_left, lower_right, upper_right])
 
     # for p in points:
     #     img = draw_point(img, p[::-1])
