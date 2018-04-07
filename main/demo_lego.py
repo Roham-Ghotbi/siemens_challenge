@@ -230,7 +230,7 @@ class LegoDemo():
             self.dm.overwrite_traj()
 
             a = time.time()
-            self.gm.execute_grasp(to_grasp[i][1], to_grasp[i][3])
+            self.gm.execute_grasp(to_grasp[i][1], class_num=to_grasp[i][3])
             # self.gm.execute_suction(to_grasp[i][2], to_grasp[i][3])
 
             times[i] = time.time() - a

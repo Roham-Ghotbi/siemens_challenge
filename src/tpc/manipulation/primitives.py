@@ -63,14 +63,14 @@ class GraspManipulator():
 
         return [x,y,z],rot
 
-    def execute_grasp(self, grasp_name, class_num):
+    def execute_grasp(self, grasp_name, class_num=None):
         """
         Picks up lego at target grasp
         Delivers lego to target bin by color
             To avoid collision errors, moves base in 
             front of bin before moving gripper forward to deposit lego
         """
-        if class_num not in range(8):
+        if not(class_num is None) and class_num not in range(8):
             raise ValueError("currently ony supports classes 0 to 7")
         self.gripper.half_gripper()
 
@@ -82,18 +82,19 @@ class GraspManipulator():
         self.gripper.close_gripper()
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),grasp_name)
 
-        color_name = class_num_to_name(class_num)
-        print("Identified lego: " + color_name)
+        if not (class_num is None):
+            color_name = class_num_to_name(class_num)
+            print("Identified lego: " + color_name)
 
-        lego_class_num = cfg.HUES_TO_BINS.index(color_name)
+            lego_class_num = cfg.HUES_TO_BINS.index(color_name)
 
-        above_pose = "lego" + str(lego_class_num) + "above"
-        below_pose = "lego" + str(lego_class_num) + "below"
+            above_pose = "lego" + str(lego_class_num) + "above"
+            below_pose = "lego" + str(lego_class_num) + "below"
 
-        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), above_pose)
-        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), below_pose)
-        self.gripper.open_gripper()
-        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), above_pose)
+            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), above_pose)
+            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), below_pose)
+            self.gripper.open_gripper()
+            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), above_pose)
 
     def execute_suction(self, grasp_name, class_num):
         self.whole_body.end_effector_frame = "hand_l_finger_vacuum_frame"
