@@ -1,9 +1,5 @@
 """
-Quick script to get _some_ pipeline going. It is assumed that the HSR head is in
-a sufficiently good spot. Just run this python script once. Rearrange stuff in
-the setup, save, then rearrange again, save, etc. To save, press any key other
-than ESC. To exit the program, press ESC.
-
+See the documentation in README.md for details.
 By Daniel Seita. Thanks to Ron Bernstein for starter code.
 """
 import argparse, cv2, sys, os, rospy, threading
@@ -11,7 +7,8 @@ import numpy as np
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 
-IMDIR = 'images/'
+IMDIR_RGB = 'images_rgb/'
+IMDIR_DEPTH = 'images_depth/'
 ESC_KEYS = [27, 1048603]
 
 
@@ -47,22 +44,36 @@ if __name__ == '__main__':
     rospy.init_node('main', anonymous=True)
     rospy.on_shutdown(OnShutdown_callback)
 
-    HIC1 = HeadImage()
+    # TODO `depth_registered` topic doesn't produce readable output, also
+    # `depth` topic doesn't seem to be published.
+    hic_list = [HeadImage(), HeadImage()]
     rospy.Subscriber("/hsrb/head_rgbd_sensor/rgb/image_raw",
-                     Image, HIC1, queue_size=1)
-    #rospy.Subscriber("/hsrb/head_r_stereo_camera/image_raw",
-    #                 Image, HIC1, queue_size=1)
+                     Image, hic_list[0], queue_size=1)
+    rospy.Subscriber("/hsrb/head_rgbd_sensor/depth_registered/image_raw",
+                     Image, hic_list[1], queue_size=1)
     isRunning = True
-    rospy.sleep(3)
+    rospy.sleep(5)
 
     while isRunning:
-        im = bridge.imgmsg_to_cv2(HIC1.get_im(), "bgr8")
-        cv2.imshow('main', im)
-        num = len([x for x in os.listdir(IMDIR) if 'png' in x])
-        fname = IMDIR+'rgb_raw_{}.png'.format(str(num).zfill(4))
+        # Obtain the images. For depth, cant use 'bgr8' I think.
+        data = [hic.get_im() for hic in hic_list]
+        img1 = bridge.imgmsg_to_cv2(data[0], "bgr8")
+        img2 = bridge.imgmsg_to_cv2(data[1])
+        print("img1.shape: {}, img2.shape: {}".format(img1.shape, img2.shape))
+
+        # Show images, get file name, etc. Depth doesn't work yet.
+        cv2.imshow('rgb/image_raw', img1)
+        #cv2.imshow('depth/image_raw', img2) # Seems to be just black
+        num = len([x for x in os.listdir(IMDIR_RGB) if 'png' in x])
+        fname1 = IMDIR_RGB+'rgb_raw_{}.png'.format(str(num).zfill(4))
+        #fname2 = IMDIR_DEPTH+'depth_raw_{}.png'.format(str(num).zfill(4))
+
+        # Save images or exit if needed. Again, depth doesn't work yet.
         key = cv2.waitKey(0)
         if key in ESC_KEYS:
             print("Exiting now ...")
             sys.exit()
-        cv2.imwrite(fname, im)
-        print("just saved: {}".format(fname))
+        cv2.imwrite(fname1, img1)
+        print("saved: {}".format(fname1))
+        #cv2.imwrite(fname2, img2)
+        #print("saved: {}".format(fname2))
