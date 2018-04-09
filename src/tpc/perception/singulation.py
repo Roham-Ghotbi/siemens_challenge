@@ -160,7 +160,7 @@ class Singulation():
             start_p, end_p = end_p, start_p
 
         #small adjustments (empirically does better)
-        start_p += (start_p - end_p)/np.linalg.norm(start_p-end_p) * cfg.SINGULATE_START_FACTOR
+        start_p += (start_p - end_p)/(np.linalg.norm(start_p-end_p)+1e-8) * cfg.SINGULATE_START_FACTOR
         end_p = start_p * (1-cfg.SINGULATE_END_FACTOR) + end_p * cfg.SINGULATE_END_FACTOR
 
         return start_p, end_p

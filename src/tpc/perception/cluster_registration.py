@@ -69,8 +69,8 @@ def display_grasps(img, groups,name="debug_imgs/grasps"):
 
             img_data = draw_point(img_data, cm)
 
-            p0 = tuple((cm - d * cfg.LINE_SIZE/2)[::-1].astype('uint32'))
-            p1 = tuple((cm + d * cfg.LINE_SIZE/2)[::-1].astype('uint32'))
+            p0 = tuple((cm - d * cfg.LINE_SIZE/2)[::-1].astype('int32'))
+            p1 = tuple((cm + d * cfg.LINE_SIZE/2)[::-1].astype('int32'))
             cv2.line(img_data, p0, p1, line_color, 2)
         #BGR to RGB
         rgb = np.fliplr(img_data.reshape(-1,3)).reshape(img_data.shape)
