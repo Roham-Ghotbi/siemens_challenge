@@ -46,7 +46,7 @@ def draw_point(img, point):
         int(point[1] - box_size):int(point[1] + box_size)] = box_color
     return img
 
-def display_grasps(img, groups,name="debug_imgs/grasps"):
+def display_grasps(img, groups,name="debug_imgs/grasps", as_tuple = False):
     """ Displays the proposed grasps
     Parameters
     ----------
@@ -64,8 +64,12 @@ def display_grasps(img, groups,name="debug_imgs/grasps"):
         line_color = box_color[::-1]
         img_data = np.copy(img.data)
         for i in range(len(groups)):
-            cm = groups[i].cm
-            d = groups[i].dir
+            if as_tuple:
+                cm = groups[0]
+                d = groups[1]
+            else:
+                cm = groups[i].cm
+                d = groups[i].dir
 
             img_data = draw_point(img_data, cm)
 

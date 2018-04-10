@@ -56,7 +56,7 @@ def set_crop(img_path="debug/imgs/new_setup_crop/crop_sample.png"):
     root.mainloop()
     pickle.dump(points, open("src/tpc/config.crop.p", "wb"))
 
-def crop_img(img, use_preset=False, arc=True, viz=False):
+def crop_img(img, use_preset=False, arc=True, viz=False, simple=False, bycoords=None):
     """ Crops image polygonally
     to white working area (WA)
     Parameters
@@ -73,6 +73,18 @@ def crop_img(img, use_preset=False, arc=True, viz=False):
     img = np.copy(img)
     #threshold to WA and flip colors
     mask_shape = (img.shape[0], img.shape[1])
+
+    if simple:
+        scale_factor = 20
+        to_chop = [mask_shape[i]/scale_factor for i in range(2)]
+        #create mask
+        focus_mask = np.zeros(mask_shape, dtype=np.uint8)
+        focus_mask[to_chop[0]:-to_chop[0],to_chop[1]:-to_chop[1]] = 255
+        return BinaryImage(focus_mask.astype("uint8"))
+    if not (bycoords is None):
+        focus_mask = np.zeros(mask_shape, dtype=np.uint8)
+        focus_mask[bycoords[0]:bycoords[1],bycoords[2]:bycoords[3]] = 255
+        return BinaryImage(focus_mask.astype("uint8"))
 
     #this case only works for white background
     if not use_preset:

@@ -12,10 +12,10 @@ can be confused with the white background
 """
 
 def get_img(ind):
-	return cv2.imread("debug_imgs/new_setup_hsv/img" + str(ind) + ".png")
+	return cv2.imread("debug_imgs/data_chris/test" + str(ind) + ".png")
 
 def write_img(img, ind):
-	cv2.imwrite("debug_imgs/new_setup_hsv/img_o" + str(ind) + ".png", img)
+	cv2.imwrite("debug_imgs/data_chris/test" + str(ind) + ".png", img)
 
 def hsv_channels(ind):
 	img = get_img(ind)
@@ -28,8 +28,9 @@ def hsv_channels(ind):
 	write_img(val, str(ind) + "val")
 
 if __name__ == "__main__":
-	for i in range(15, 16):
-		img = get_img(i)
-		viz = view_hsv(ColorImage(img))
-		write_img(viz.data, i)
+	for i in range(0, 6):
+		hsv_channels(i)
+		# img = get_img(i)
+		# viz = view_hsv(ColorImage(img))
+		# write_img(viz.data, i)
 	# hsv_channels(12)

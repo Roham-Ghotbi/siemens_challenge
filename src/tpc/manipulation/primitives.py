@@ -129,7 +129,7 @@ class GraspManipulator():
     def position_head(self):
         # self.tt.move_to_pose(self.omni_base,'lower_start')
         self.whole_body.move_to_joint_positions({'head_pan_joint': 1.5})
-        self.whole_body.move_to_joint_positions({'head_tilt_joint':-0.9})
+        self.whole_body.move_to_joint_positions({'head_tilt_joint':-1.15})
 
 
     def move_to_home(self):

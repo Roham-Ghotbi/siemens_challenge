@@ -8,7 +8,7 @@ import numpy as np
 COLLECT_DATA = False
 
 #whether to show plots/ask for success
-QUERY = True
+QUERY = False
 
 #whether to attempt multiple grasps from just 1 image; if true, susceptible to error from open loop control
 CHAIN_GRASPS = False

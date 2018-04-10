@@ -297,9 +297,9 @@ class LegoDemo():
         self.dm = DataManager()
         self.get_new_grasp = True
 
-        DEBUG = False
-        if not DEBUG:
-            self.gm.position_head()
+        # DEBUG = False
+        # if not DEBUG:
+        #     self.gm.position_head()
 
         time.sleep(3) #making sure the robot is finished moving
         c_img = self.cam.read_color_data()
