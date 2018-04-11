@@ -1,5 +1,13 @@
 # Siemens Challenge
 
+## Running the demo
+
+The current version of the demo resides in `main/test_labeling.py`. Before running this script, follow the instructions on the hsr_web repository to start a server and run psiturk. Once the loading icon appears, you are ready to run the demo script. The robot's initial position should be sideways so its head can turn left to face the objects. 
+
+During the demo, simply provide the bounding box and class label for the next object: the HSR will grasp it, return to its start position to get a clear view of the HSR markers, drop the object in the correct box, then return to its start position to begin the loop again. (note- in this version of the demo the HSR will only attempt grasps, so ensure the labeled object has sufficient clearance).
+
+To restart the demo, run `endcomm.sh` to shut down all server code. Also reposition the robot correctly.
+
 ## Forming a Dataset
 
 **Update: see email I wrote to the team on April 10 at around 9am. That has the
