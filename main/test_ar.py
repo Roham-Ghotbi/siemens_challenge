@@ -57,7 +57,7 @@ img = importlib.import_module(cfg.IMG_MODULE)
 ColorImage = getattr(img, 'ColorImage')
 BinaryImage = getattr(img, 'BinaryImage')
 
-class LabelDemo():
+class ARDemo():
 
     def __init__(self):
         """
@@ -76,7 +76,7 @@ class LabelDemo():
         self.cam = RGBD()
         self.com = COM()
 
-        self.com.go_to_initial_state(self.whole_body)
+        # self.com.go_to_initial_state(self.whole_body)
 
         self.grasp_count = 0
 
@@ -90,61 +90,22 @@ class LabelDemo():
         self.gm = GraspManipulator(self.gp, self.gripper, self.suction, self.whole_body, self.omni_base)
 
         self.web = Web_Labeler()
-        IPython.embed()
         print "after thread"
+       
+    def ar_demo(self):
+        not_found = True
+        self.whole_body.move_to_joint_positions({'head_pan_joint':1.3})
+        self.whole_body.move_to_joint_positions({'head_tilt_joint':-1})
+        change = 0.2
+        while not_found:
+            try: 
+                A = self.tl.lookupTransform('head_l_stereo_camera_frame','ar_marker/1', rospy.Time(0))
+                not_found = False
+            except: 
+                rospy.logerr('ar not found')
+                self.whole_body.move_to_joint_positions({'head_pan_joint':1.3-change})
+                change += 0.2
 
-    def bbox_to_fg(self, bbox, c_img, col_img):
-        obj_mask = crop_img(c_img, bycoords = [bbox[1], bbox[3], bbox[0], bbox[2]])
-        obj_workspace_img = col_img.mask_binary(obj_mask)
-        fg = obj_workspace_img.foreground_mask(cfg.COLOR_TOL, ignore_black=True)
-        return fg, obj_workspace_img
-
-    def label_demo(self):
-
-        self.gm.position_head()
-
-        time.sleep(3) #making sure the robot is finished moving
-
-        c_img = self.cam.read_color_data()
-        d_img = self.cam.read_depth_data()
-
-        while not (c_img is None or d_img is None):
-            path = "/home/autolab/Workspaces/michael_working/siemens_challenge/debug_imgs/web.png"
-            cv2.imwrite(path, c_img)
-            time.sleep(2) #make sure new image is written before being read
-
-            # print "\n new iteration"
-            main_mask = crop_img(c_img, simple=True)
-            col_img = ColorImage(c_img)
-            workspace_img = col_img.mask_binary(main_mask)
-
-            labels = self.web.label_image(path)
-
-            obj = labels['objects'][0]
-            bbox = obj['box']
-            class_label = obj['class']
-
-            #xmin, ymin, xmax, ymax
-            fg, obj_w = self.bbox_to_fg(bbox, c_img, col_img)
-            cv2.imwrite("debug_imgs/test.png", obj_w.data)
-
-            groups = get_cluster_info(fg)
-            display_grasps(workspace_img, groups)
-
-            group = groups[0]
-            pose,rot = self.gm.compute_grasp(group.cm, group.dir, d_img)
-            grasp_pose = self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=workspace_img.data)
-
-            self.gm.execute_grasp(grasp_pose, class_num = class_label)
-
-            #reset to start
-            self.whole_body.move_to_go()
-            self.gm.move_to_home()
-            self.gm.position_head()
-            time.sleep(3)
-
-            c_img = self.cam.read_color_data()
-            d_img = self.cam.read_depth_data()
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
@@ -152,5 +113,5 @@ if __name__ == "__main__":
     else:
         DEBUG = False
 
-    task = LabelDemo()
-    task.label_demo()
+    task = ARDemo()
+    task.ar_demo()

@@ -70,7 +70,7 @@ class GraspManipulator():
             To avoid collision errors, moves base in 
             front of bin before moving gripper forward to deposit lego
         """
-        if not(class_num is None) and class_num not in range(8):
+        if not(class_num is None) and class_num not in range(len(cfg.labelclasses)):
             raise ValueError("currently ony supports classes 0 to 7")
         self.gripper.half_gripper()
 
@@ -78,23 +78,18 @@ class GraspManipulator():
 
         #before lowering gripper, go directly above grasp position
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),grasp_name)
-        self.whole_body.move_end_effector_pose(geometry.pose(z=0.01),grasp_name)
+        self.whole_body.move_end_effector_pose(geometry.pose(z=0.0),grasp_name)
         self.gripper.close_gripper()
-        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),grasp_name)
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.3),grasp_name)
 
         if not (class_num is None):
             color_name = class_num_to_name(class_num)
-            print("Identified lego: " + color_name)
+            print("CLASS IS " + cfg.labelclasses[class_num])
 
-            lego_class_num = cfg.HUES_TO_BINS.index(color_name)
+            # self.temp_bin_pose()
+            # self.gripper.open_gripper()
 
-            above_pose = "lego" + str(lego_class_num) + "above"
-            below_pose = "lego" + str(lego_class_num) + "below"
-
-            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), above_pose)
-            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), below_pose)
-            self.gripper.open_gripper()
-            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), above_pose)
+            self.place_in_bin(class_num + 1) #1 index?
 
     def execute_suction(self, grasp_name, class_num):
         self.whole_body.end_effector_frame = "hand_l_finger_vacuum_frame"
@@ -111,6 +106,7 @@ class GraspManipulator():
         above_pose = "lego" + str(lego_class_num) + "above"
         below_pose = "lego" + str(lego_class_num) + "below"
         IPython.embed()
+
         self.whole_body.end_effector_frame = 'hand_palm_link'
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), above_pose)
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), below_pose)
@@ -131,9 +127,24 @@ class GraspManipulator():
         self.whole_body.move_to_joint_positions({'head_pan_joint': 1.5})
         self.whole_body.move_to_joint_positions({'head_tilt_joint':-1.15})
 
+    def temp_bin_pose(self):
+        p = self.start_pose 
+        self.omni_base.go(p[0] + 0.2, p[1], p[2], 300, relative=False)
 
     def move_to_home(self):
         p = self.start_pose
         self.omni_base.go(p[0], p[1], p[2], 300, relative=False)
         # self.tt.move_to_pose(self.omni_base,'lower_mid')
         # sys.exit()
+
+    def place_in_bin(self, class_id):
+        nothing = True
+        while nothing: 
+            try:
+                ar_name - 'ar_marker/' + str(class_id)
+                self.whole_body.move_end_effector_pose(geometry.pose(y=-0.4,z=0.1, ek=-1.57), ar_name)
+                nothing = False
+            except:
+                rospy.logerr('bug in moving to AR marker')
+
+        self.gripper.open_gripper()
