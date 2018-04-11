@@ -87,10 +87,9 @@ class LabelDemo():
         self.gripper = Crane_Gripper(self.gp, self.cam, self.com.Options, self.robot.get('gripper'))
         self.suction = Suction_Gripper(self.gp, self.cam, self.com.Options, self.robot.get('suction'))
 
-        self.gm = GraspManipulator(self.gp, self.gripper, self.suction, self.whole_body, self.omni_base)
+        self.gm = GraspManipulator(self.gp, self.gripper, self.suction, self.whole_body, self.omni_base, self.tl)
 
         self.web = Web_Labeler()
-        IPython.embed()
         print "after thread"
 
     def bbox_to_fg(self, bbox, c_img, col_img):

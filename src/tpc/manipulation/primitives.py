@@ -4,9 +4,11 @@ import tpc.config.config_tpc as cfg
 from hsrb_interface import geometry
 import numpy as np
 from tpc.perception.cluster_registration import class_num_to_name
+import rospy
+import time 
 
 class GraspManipulator():
-    def __init__(self, gp, gripper, suction, whole_body, omni_base):
+    def __init__(self, gp, gripper, suction, whole_body, omni_base, tl):
         self.gp = gp
         self.gripper = gripper
         self.suction = suction
@@ -14,6 +16,7 @@ class GraspManipulator():
         self.omni_base = omni_base
         # self.tt = tt
         self.start_pose = self.omni_base.pose
+        self.tl = tl 
 
     def get_z(self, point, d_img):
         y = int(point[0])
@@ -70,7 +73,7 @@ class GraspManipulator():
             To avoid collision errors, moves base in 
             front of bin before moving gripper forward to deposit lego
         """
-        if not(class_num is None) and class_num not in range(len(cfg.labelclasses)):
+        if not(class_num is None) and class_num not in range(len(cfg.labels)):
             raise ValueError("currently ony supports classes 0 to 7")
         self.gripper.half_gripper()
 
@@ -82,14 +85,16 @@ class GraspManipulator():
         self.gripper.close_gripper()
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.3),grasp_name)
 
+        if class_num is None:
+            self.temp_bin_pose()
+            self.gripper.open_gripper()
+
         if not (class_num is None):
             color_name = class_num_to_name(class_num)
-            print("CLASS IS " + cfg.labelclasses[class_num])
+            print("CLASS IS " + cfg.labels[class_num])
 
-            # self.temp_bin_pose()
-            # self.gripper.open_gripper()
-
-            self.place_in_bin(class_num + 1) #1 index?
+            #AR numbers from 8 to 11
+            self.place_in_bin(class_num + 8)
 
     def execute_suction(self, grasp_name, class_num):
         self.whole_body.end_effector_frame = "hand_l_finger_vacuum_frame"
@@ -137,13 +142,27 @@ class GraspManipulator():
         # self.tt.move_to_pose(self.omni_base,'lower_mid')
         # sys.exit()
 
+    def does_ar_exist(self, class_id):
+        try:
+            ar_name = 'ar_marker/' + str(class_id)
+            A = self.tl.lookupTransform('head_l_stereo_camera_frame',ar_name, rospy.Time(0))
+            return True
+        except: 
+            rospy.logerr('ar not found')
+            return False
+
     def place_in_bin(self, class_id):
+        self.move_to_home()
+        time.sleep(1)
+
         nothing = True
-        while nothing: 
+        i = 0
+        while nothing and i < 10: 
             try:
-                ar_name - 'ar_marker/' + str(class_id)
-                self.whole_body.move_end_effector_pose(geometry.pose(y=-0.4,z=0.1, ek=-1.57), ar_name)
+                ar_name = 'ar_marker/' + str(class_id)
+                self.whole_body.move_end_effector_pose(geometry.pose(y=0.1, z=-0.3), ar_name)
                 nothing = False
+                i += 1
             except:
                 rospy.logerr('bug in moving to AR marker')
 

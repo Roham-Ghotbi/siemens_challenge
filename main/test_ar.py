@@ -87,7 +87,7 @@ class ARDemo():
         self.gripper = Crane_Gripper(self.gp, self.cam, self.com.Options, self.robot.get('gripper'))
         self.suction = Suction_Gripper(self.gp, self.cam, self.com.Options, self.robot.get('suction'))
 
-        self.gm = GraspManipulator(self.gp, self.gripper, self.suction, self.whole_body, self.omni_base)
+        self.gm = GraspManipulator(self.gp, self.gripper, self.suction, self.whole_body, self.omni_base, self.tl)
 
         self.web = Web_Labeler()
         print "after thread"
@@ -101,8 +101,10 @@ class ARDemo():
             try: 
                 A = self.tl.lookupTransform('head_l_stereo_camera_frame','ar_marker/1', rospy.Time(0))
                 not_found = False
+                IPython.embed()
             except: 
                 rospy.logerr('ar not found')
+                IPython.embed()
                 self.whole_body.move_to_joint_positions({'head_pan_joint':1.3-change})
                 change += 0.2
 
