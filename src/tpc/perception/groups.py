@@ -102,9 +102,9 @@ class Group:
         for dim in range(self.ndim):
             self.low_coords[dim] = min(self.low_coords[dim], other.low_coords[dim])
             self.high_coords[dim] = max(self.high_coords[dim], other.high_coords[dim])
-        self.area = self.area + other.area
         n, m = len(self.points), len(other.points)
-        self.points = self.points + other.points
+        self.points = list(set(self.points + other.points)) #don't double count
+        self.area = len(self.points)
 
     def get_bounds(self):
         """

@@ -37,19 +37,17 @@ import sys
 
 
 from il_ros_hsr.p_pi.tpc.gripper import Lego_Gripper
-from tpc.perception.cluster_registration import run_connected_components, display_grasps, \
-    grasps_within_pile, hsv_classify
+from tpc.perception.cluster_registration import run_connected_components, display_grasps
 from tpc.perception.groups import Group
 
 from tpc.perception.singulation import Singulation
 from tpc.perception.crop import crop_img
 from tpc.manipulation.primitives import GraspManipulator
-from tpc.data_manager import DataManager
-from il_ros_hsr.p_pi.bed_making.table_top import TableTop
 from il_ros_hsr.core.rgbd_to_map import RGBD2Map
 sys.path.append('/home/autolab/Workspaces/michael_working/hsr_web')
 from web_labeler import Web_Labeler
-from tpc.perception.connected_components import get_cluster_info
+from tpc.perception.connected_components import get_cluster_info, merge_groups
+from tpc.perception.bbox import Bbox, find_isolated_objects, select_first_obj
 
 import tpc.config.config_tpc as cfg
 import importlib
@@ -59,14 +57,18 @@ BinaryImage = getattr(img, 'BinaryImage')
 
 """
 This class is for use with the robot
-Pipeline it tests is labeling a single object using the web interface,
-then the robot grasping the object and placing it in the correct bin by AR marker
+Pipeline it tests is labeling all objects in an image using web interface,
+then choosing between and predicting a singulation or a grasp,
+then the robot executing the predicted motion
 """
 
-class LabelDemo():
+class FullWebDemo():
 
     def __init__(self):
+        """
+        Class to run HSR lego task
 
+        """
         self.robot = hsrb_interface.Robot()
         self.rgbd_map = RGBD2Map()
 
@@ -94,35 +96,42 @@ class LabelDemo():
         self.web = Web_Labeler()
         print "after thread"
 
-    def bbox_to_fg(self, bbox, c_img, col_img):
-        obj_mask = crop_img(c_img, bycoords = [bbox[1], bbox[3], bbox[0], bbox[2]])
-        obj_workspace_img = col_img.mask_binary(obj_mask)
-        fg = obj_workspace_img.foreground_mask(cfg.COLOR_TOL, ignore_black=True)
-        return fg, obj_workspace_img
 
-    def test_bbox_overlap(self, box_a, box_b):
+    def run_grasp(self, bbox, c_img, col_img, workspace_img, d_img):
+        print("grasping a " + cfg.labels[bbox.label])
         #bbox has format [xmin, ymin, xmax, ymax]
-        if box_a[0] > box_b[2] or box_a[2] < box_b[0]:
+        fg, obj_w = bbox.to_mask(c_img, col_img)
+        # cv2.imwrite("debug_imgs/test.png", obj_w.data)
+        # cv2.imwrite("debug_imgs/test2.png", fg.data)
+        groups = get_cluster_info(fg)
+        curr_tol = cfg.COLOR_TOL 
+        while len(groups) == 0 and curr_tol > 10:
+            curr_tol -= 5
+            #retry with lower tolerance- probably white object 
+            fg, obj_w = bbox.to_mask(c_img, col_img, tol=curr_tol)
+            groups = get_cluster_info(fg)
+
+        if len(groups) == 0:
+            print("No object within bounding box")
             return False
-        if box_a[1] > box_b[3] or box_a[3] < box_b[1]:
-            return False 
-        return True 
 
-    def find_isolated_objects(self, bboxes, c_img):
-        valid_bboxes = []
-        for curr_ind in range(len(bboxes)):
-            curr_bbox = bboxes[curr_ind]
-            overlap = False  
-            for test_ind in range(curr_ind + 1, len(bboxes)):
-                test_bbox = bboxes[test_ind]
-                if self.test_bbox_overlap(curr_bbox, test_bbox):
-                    overlap = True 
-                    break 
-            if not overlap:
-                valid_bboxes.append(curr_bbox)
-        return valid_bboxes
+        display_grasps(workspace_img, groups)
 
-    def label_demo(self):
+        group = groups[0]
+        pose,rot = self.gm.compute_grasp(group.cm, group.dir, d_img)
+        grasp_pose = self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=workspace_img.data)
+
+        self.gm.execute_grasp(grasp_pose, class_num = bbox.label)
+
+    def run_singulate(self, col_img, main_mask, to_singulate, d_img):
+        print("singulating")
+        singulator = Singulation(col_img, main_mask, [g.mask for g in to_singulate])
+        waypoints, rot, free_pix = singulator.get_singulation()
+
+        singulator.display_singulation()
+        self.gm.singulate(waypoints, rot, col_img.data, d_img, expand=True)
+
+    def full_web_demo(self):
         self.gm.position_head()
 
         time.sleep(3) #making sure the robot is finished moving
@@ -142,23 +151,20 @@ class LabelDemo():
 
             labels = self.web.label_image(path)
 
-            obj = labels['objects'][0]
-            bbox = obj['box']
-            class_label = obj['class']
+            objs = labels['objects']
+            bboxes = [Bbox(obj['box'], obj['class']) for obj in objs]
+            single_objs = find_isolated_objects(bboxes)
 
-            #bbox has format [xmin, ymin, xmax, ymax]
-            fg, obj_w = self.bbox_to_fg(bbox, c_img, col_img)
-            cv2.imwrite("debug_imgs/test.png", obj_w.data)
-
-            groups = get_cluster_info(fg)
-            display_grasps(workspace_img, groups)
-
-            group = groups[0]
-            pose,rot = self.gm.compute_grasp(group.cm, group.dir, d_img)
-            grasp_pose = self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=workspace_img.data)
-
-            self.gm.execute_grasp(grasp_pose, class_num = class_label)
-
+            if len(single_objs) > 0:
+                to_grasp = select_first_obj(single_objs)
+                self.run_grasp(to_grasp, c_img, col_img, workspace_img, d_img)
+            else:
+                #for accurate singulation should have bboxes for all
+                fg_imgs = [box.to_mask(c_img, col_img) for box in bboxes]
+                groups = [get_cluster_info(fg[0])[0] for fg in fg_imgs]
+                groups = merge_groups(groups, cfg.DIST_TOL)
+                self.run_singulate(col_img, main_mask, groups, d_img)
+            
             #reset to start
             self.whole_body.move_to_go()
             self.gm.move_to_home()
@@ -174,5 +180,5 @@ if __name__ == "__main__":
     else:
         DEBUG = False
 
-    task = LabelDemo()
-    task.label_demo()
+    task = FullWebDemo()
+    task.full_web_demo()

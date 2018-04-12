@@ -1,47 +1,54 @@
 from tpc.perception.groups import Group
-import numpy as np
-from perception import ColorImage, BinaryImage
+import tpc.config.config_tpc as cfg
+from tpc.perception.crop import crop_img
+import importlib
+img = importlib.import_module(cfg.IMG_MODULE)
+ColorImage = getattr(img, 'ColorImage')
+BinaryImage = getattr(img, 'BinaryImage')
 
-def bbox_to_mask(bbox, c_img):
-    loX, loY, hiX, hiY = bbox
-    bin_img = np.zeros(c_img.shape[0:2])
-    #don't include workspace points
-    for x in range(loX, hiX):
-        for y in range(loY, hiY):
-            r, g, b = c_img[y][x]
-            if r < 240 or g < 240 or b < 240:
-                bin_img[y][x] = 255
+def find_isolated_objects(bboxes):
+    valid_bboxes = []
+    for curr_ind in range(len(bboxes)):
+        curr_bbox = bboxes[curr_ind]
+        overlap = False 
+        for test_ind in range(len(bboxes)):
+            if curr_ind != test_ind:
+                test_bbox = bboxes[test_ind]
+                if curr_bbox.test_overlap(test_bbox):
+                    overlap = True
+                    break 
+        if not overlap:
+            valid_bboxes.append(curr_bbox)
+    return valid_bboxes
 
-    return BinaryImage(bin_img.astype(np.uint8))
+def select_first_obj(bboxes):
+    bottom_left_bbox =  min(bboxes, key = lambda x: x.xmin + x.ymin)
+    return bottom_left_bbox
 
-def bbox_to_grasp(self, bbox, c_img, d_img):
-    '''
-    Computes center of mass and direction of grasp using bbox
-    '''
-    loX, loY, hiX, hiY = bbox
+class Bbox:
+    """
+    class for object bounding boxes 
+    """
+    def __init__(self, points, label):
+        #points should have format [xmin, ymin, xmax, ymax]
+        #label should be an integer 
+        self.xmin = points[0]
+        self.ymin = points[1]
+        self.xmax = points[2]
+        self.ymax = points[3]
+        self.label = label
+        self.points = points 
 
-    #don't include workspace points
-    dpoints = []
-    for x in range(loX, hiX):
-        for y in range(loY, hiY):
-            r, g, b = c_img[y][x]
-            if r < 240 or g < 240 or b < 240:
-                dpoints.append([y, x])
+    def test_overlap(self, other):
+        if self.xmin > other.xmax or self.xmax < other.xmin:
+            return False
+        if self.ymin > other.ymax or self.ymax < other.ymin:
+            return False 
+        return True 
 
-    g = Group(1, points=dpoints)
-    direction = g.orientation()
-    center_mass = g.center_mass()
-
-    #use x from color image
-    x_center_points = [d for d in dpoints if abs(d[1] - center_mass[1]) < 4]
-
-    #compute y using depth image
-    dvals = [d_img[d[0], d[1]] for d in x_center_points]
-    depth_vals = list(np.copy(dvals))
-    depth_vals.sort()
-    #use median to ignore depth noise
-    middle_depth = depth_vals[len(depth_vals)/2]
-    closest_ind = (np.abs(dvals - middle_depth)).argmin()
-    closest_point = x_center_points[closest_ind]
-
-    return closest_point, direction
+    def to_mask(self, c_img, col_img, tol=cfg.COLOR_TOL):
+        obj_mask = crop_img(c_img, bycoords = [self.ymin, self.ymax, self.xmin, self.xmax])
+        obj_workspace_img = col_img.mask_binary(obj_mask)
+        # fg = obj_workspace_img.foreground_mask(cfg.COLOR_TOL, ignore_black=True)
+        fg = obj_workspace_img.foreground_mask(tol, ignore_black=True)
+        return fg, obj_workspace_img

@@ -101,6 +101,9 @@ def merge_groups(groups, dist_tol):
 
         groups = unmerged_groups
         unmerged_groups = []
+        
+    for g in merged_groups:
+        g.compute_info()
 
     return merged_groups
 
@@ -131,8 +134,5 @@ def get_cluster_info(img):
     groups = generate_groups(img_data, orig_shape, scaled_shape)
     groups = [g for g in groups if g.area >= cfg.SIZE_TOL/cfg.SCALE_FACTOR]
     groups = merge_groups(groups, dist_tol)
-
-    for g in groups:
-        g.compute_info()
 
     return groups

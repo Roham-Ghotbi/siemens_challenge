@@ -134,7 +134,7 @@ class GraspManipulator():
 
     def temp_bin_pose(self):
         p = self.start_pose 
-        self.omni_base.go(p[0] + 0.2, p[1], p[2], 300, relative=False)
+        self.omni_base.go(p[0] + 0.5, p[1], p[2], 300, relative=False)
 
     def move_to_home(self):
         p = self.start_pose
@@ -167,7 +167,7 @@ class GraspManipulator():
                 i += 1
                 curr_tilt = 1.0 - (i * 1.0)/5.0
                 self.whole_body.move_to_joint_positions({'head_pan_joint': curr_tilt})
-                time.sleep(1)
+                time.sleep(0.5)
         if nothing:
             print("Could not find AR marker- depositing object in default position.")
             self.temp_bin_pose()

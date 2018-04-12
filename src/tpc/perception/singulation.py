@@ -85,8 +85,8 @@ class Singulation():
         segmented = bricks.segment_kmeans(.1, 2)
         border = segmented.border_pixels()
 
-        # display_border(border)
-        # display_segments(segmented)
+        # self.display_border(border)
+        # self.display_segments(segmented)
 
         #rare case- 2 clusters aren't touching
         if len(border) == 0:

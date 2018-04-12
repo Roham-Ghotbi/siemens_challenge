@@ -37,19 +37,17 @@ import sys
 
 
 from il_ros_hsr.p_pi.tpc.gripper import Lego_Gripper
-from tpc.perception.cluster_registration import run_connected_components, display_grasps, \
-    grasps_within_pile, hsv_classify
+from tpc.perception.cluster_registration import run_connected_components, display_grasps
 from tpc.perception.groups import Group
 
 from tpc.perception.singulation import Singulation
 from tpc.perception.crop import crop_img
 from tpc.manipulation.primitives import GraspManipulator
-from tpc.data_manager import DataManager
-from il_ros_hsr.p_pi.bed_making.table_top import TableTop
 from il_ros_hsr.core.rgbd_to_map import RGBD2Map
 sys.path.append('/home/autolab/Workspaces/michael_working/hsr_web')
 from web_labeler import Web_Labeler
 from tpc.perception.connected_components import get_cluster_info, merge_groups
+from tpc.perception.bbox import Bbox, find_isolated_objects, select_first_obj
 
 import tpc.config.config_tpc as cfg
 import importlib
@@ -57,69 +55,48 @@ img = importlib.import_module(cfg.IMG_MODULE)
 ColorImage = getattr(img, 'ColorImage')
 BinaryImage = getattr(img, 'BinaryImage')
 
-class LabelDemo():
+
+"""
+This class is for offline use (no robot)
+Pipeline it tests is labeling all objects in an image using web interface,
+then choosing between and predicting a singulation or a grasp
+"""
+
+class DecisionDemo():
 
     def __init__(self):
-        """
-        Class to run HSR lego task
-
-        """
-
         self.web = Web_Labeler()
         print "after thread"
 
-    def bbox_to_fg(self, bbox, c_img, col_img):
-        obj_mask = crop_img(c_img, bycoords = [bbox[1], bbox[3], bbox[0], bbox[2]])
-        obj_workspace_img = col_img.mask_binary(obj_mask)
-        fg = obj_workspace_img.foreground_mask(cfg.COLOR_TOL, ignore_black=True)
-        return fg, obj_workspace_img
 
-    def test_bbox_overlap(self, box_a, box_b):
+    def run_grasp(self, bbox, c_img, col_img, workspace_img):
+        print("grasping a " + cfg.labels[bbox.label])
         #bbox has format [xmin, ymin, xmax, ymax]
-        if box_a[0] > box_b[2] or box_a[2] < box_b[0]:
-            return False
-        if box_a[1] > box_b[3] or box_a[3] < box_b[1]:
-            return False 
-        return True 
-
-    def find_isolated_objects(self, obj_info):
-        valid_objs = []
-        for curr_ind in range(len(obj_info)):
-            curr_obj = obj_info[curr_ind]
-            curr_bbox = curr_obj[0]
-
-            for test_ind in range(len(obj_info)):
-                if curr_ind != test_ind:
-                    test_obj = obj_info[test_ind]
-                    test_bbox = test_obj[0]
-                    if self.test_bbox_overlap(curr_bbox, test_bbox):
-                        overlap = True
-                        break 
-            if not overlap:
-                valid_objs.append(curr_obj)
-        return valid_objs
-
-    def select_first_obj(self, single_objs):
-        #bbox has format [xmin, ymin, xmax, ymax]
-        #obj has format (bbox, label)
-        bottom_left_obj =  min(single_objs, key = lambda x: x[0][1] + x[0][2])
-        return bottom_left_obj
-
-    def run_grasp(self, bbox, class_label, c_img, col_img, workspace_img):
-        #bbox has format [xmin, ymin, xmax, ymax]
-        fg, obj_w = self.bbox_to_fg(bbox, c_img, col_img)
-        cv2.imwrite("debug_imgs/test.png", obj_w.data)
-
+        fg, obj_w = bbox.to_mask(c_img, col_img)
+        # cv2.imwrite("debug_imgs/test.png", obj_w.data)
+        # cv2.imwrite("debug_imgs/test2.png", fg.data)
         groups = get_cluster_info(fg)
+        curr_tol = cfg.COLOR_TOL 
+        while len(groups) == 0 and curr_tol > 10:
+            curr_tol -= 5
+            #retry with lower tolerance- probably white object 
+            fg, obj_w = bbox.to_mask(c_img, col_img, tol=curr_tol)
+            groups = get_cluster_info(fg)
+
+        if len(groups) == 0:
+            print("No object within bounding box")
+            return False
+
         display_grasps(workspace_img, groups)
 
     def run_singulate(self, col_img, main_mask, to_singulate):
+        print("singulating")
         singulator = Singulation(col_img, main_mask, [g.mask for g in to_singulate])
         waypoints, rot, free_pix = singulator.get_singulation()
 
         singulator.display_singulation()
 
-    def label_demo(self):
+    def decision_demo(self):
         time.sleep(3) #making sure the robot is finished moving
 
         sample_data_paths = ["debug_imgs/data_chris/test" + str(i) + ".png" for i in range(3)]
@@ -139,14 +116,15 @@ class LabelDemo():
             labels = self.web.label_image(path)
 
             objs = labels['objects']
-            obj_info = [(obj['box'], obj['class']) for obj in objs]
-            single_objs = self.find_isolated_objects(obj_info)
+            bboxes = [Bbox(obj['box'], obj['class']) for obj in objs]
+            single_objs = find_isolated_objects(bboxes)
 
             if len(single_objs) > 0:
-                to_grasp = self.select_first_obj(single_objs)
-                self.run_grasp(to_grasp[0], to_grasp[1], c_img, col_img, workspace_img)
+                to_grasp = select_first_obj(single_objs)
+                self.run_grasp(to_grasp, c_img, col_img, workspace_img)
             else:
-                fg_imgs = [self.bbox_to_fg(obj[0], c_img, col_img) for obj in obj_info]
+                #for accurate singulation should have bboxes for all
+                fg_imgs = [box.to_mask(c_img, col_img) for box in bboxes]
                 groups = [get_cluster_info(fg[0])[0] for fg in fg_imgs]
                 groups = merge_groups(groups, cfg.DIST_TOL)
                 self.run_singulate(col_img, main_mask, groups)
@@ -159,5 +137,5 @@ if __name__ == "__main__":
     else:
         DEBUG = False
 
-    task = LabelDemo()
-    task.label_demo()
+    task = DecisionDemo()
+    task.decision_demo()
