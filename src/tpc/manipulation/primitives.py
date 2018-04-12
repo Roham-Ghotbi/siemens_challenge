@@ -162,8 +162,14 @@ class GraspManipulator():
                 ar_name = 'ar_marker/' + str(class_id)
                 self.whole_body.move_end_effector_pose(geometry.pose(y=0.1, z=-0.3), ar_name)
                 nothing = False
-                i += 1
             except:
-                rospy.logerr('bug in moving to AR marker')
-
+                rospy.logerr('continuing to search for AR marker')
+                i += 1
+                curr_tilt = 1.0 - (i * 1.0)/5.0
+                self.whole_body.move_to_joint_positions({'head_pan_joint': curr_tilt})
+                time.sleep(1)
+        if nothing:
+            print("Could not find AR marker- depositing object in default position.")
+            self.temp_bin_pose()
+            
         self.gripper.open_gripper()

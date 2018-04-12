@@ -49,7 +49,7 @@ from il_ros_hsr.p_pi.bed_making.table_top import TableTop
 from il_ros_hsr.core.rgbd_to_map import RGBD2Map
 sys.path.append('/home/autolab/Workspaces/michael_working/hsr_web')
 from web_labeler import Web_Labeler
-from tpc.perception.connected_components import get_cluster_info
+from tpc.perception.connected_components import get_cluster_info, merge_groups
 
 import tpc.config.config_tpc as cfg
 import importlib
@@ -64,30 +64,6 @@ class LabelDemo():
         Class to run HSR lego task
 
         """
-
-        self.robot = hsrb_interface.Robot()
-        self.rgbd_map = RGBD2Map()
-
-        self.omni_base = self.robot.get('omni_base')
-        self.whole_body = self.robot.get('whole_body')
-
-        self.side = 'BOTTOM'
-
-        self.cam = RGBD()
-        self.com = COM()
-
-        self.com.go_to_initial_state(self.whole_body)
-
-        self.grasp_count = 0
-
-        self.br = tf.TransformBroadcaster()
-        self.tl = TransformListener()
-
-        self.gp = GraspPlanner()
-        self.gripper = Crane_Gripper(self.gp, self.cam, self.com.Options, self.robot.get('gripper'))
-        self.suction = Suction_Gripper(self.gp, self.cam, self.com.Options, self.robot.get('suction'))
-
-        self.gm = GraspManipulator(self.gp, self.gripper, self.suction, self.whole_body, self.omni_base, self.tl)
 
         self.web = Web_Labeler()
         print "after thread"
@@ -106,29 +82,51 @@ class LabelDemo():
             return False 
         return True 
 
-    def find_isolated_objects(self, bboxes, c_img):
-        valid_bboxes = []
-        for curr_ind in range(len(bboxes)):
-            curr_bbox = bboxes[curr_ind]
-            overlap = False  
-            for test_ind in range(curr_ind + 1, len(bboxes)):
-                test_bbox = bboxes[test_ind]
-                if self.test_bbox_overlap(curr_bbox, test_bbox):
-                    overlap = True 
-                    break 
+    def find_isolated_objects(self, obj_info):
+        valid_objs = []
+        for curr_ind in range(len(obj_info)):
+            curr_obj = obj_info[curr_ind]
+            curr_bbox = curr_obj[0]
+
+            for test_ind in range(len(obj_info)):
+                if curr_ind != test_ind:
+                    test_obj = obj_info[test_ind]
+                    test_bbox = test_obj[0]
+                    if self.test_bbox_overlap(curr_bbox, test_bbox):
+                        overlap = True
+                        break 
             if not overlap:
-                valid_bboxes.append(curr_bbox)
-        return valid_bboxes
+                valid_objs.append(curr_obj)
+        return valid_objs
+
+    def select_first_obj(self, single_objs):
+        #bbox has format [xmin, ymin, xmax, ymax]
+        #obj has format (bbox, label)
+        bottom_left_obj =  min(single_objs, key = lambda x: x[0][1] + x[0][2])
+        return bottom_left_obj
+
+    def run_grasp(self, bbox, class_label, c_img, col_img, workspace_img):
+        #bbox has format [xmin, ymin, xmax, ymax]
+        fg, obj_w = self.bbox_to_fg(bbox, c_img, col_img)
+        cv2.imwrite("debug_imgs/test.png", obj_w.data)
+
+        groups = get_cluster_info(fg)
+        display_grasps(workspace_img, groups)
+
+    def run_singulate(self, col_img, main_mask, to_singulate):
+        singulator = Singulation(col_img, main_mask, [g.mask for g in to_singulate])
+        waypoints, rot, free_pix = singulator.get_singulation()
+
+        singulator.display_singulation()
 
     def label_demo(self):
-        self.gm.position_head()
-
         time.sleep(3) #making sure the robot is finished moving
 
-        c_img = self.cam.read_color_data()
-        d_img = self.cam.read_depth_data()
+        sample_data_paths = ["debug_imgs/data_chris/test" + str(i) + ".png" for i in range(3)]
+        img_ind = 0
+        c_img = cv2.imread(sample_data_paths[img_ind])
 
-        while not (c_img is None or d_img is None):
+        while not (c_img is None):
             path = "/home/autolab/Workspaces/michael_working/siemens_challenge/debug_imgs/web.png"
             cv2.imwrite(path, c_img)
             time.sleep(2) #make sure new image is written before being read
@@ -140,31 +138,20 @@ class LabelDemo():
 
             labels = self.web.label_image(path)
 
-            obj = labels['objects'][0]
-            bbox = obj['box']
-            class_label = obj['class']
+            objs = labels['objects']
+            obj_info = [(obj['box'], obj['class']) for obj in objs]
+            single_objs = self.find_isolated_objects(obj_info)
 
-            #bbox has format [xmin, ymin, xmax, ymax]
-            fg, obj_w = self.bbox_to_fg(bbox, c_img, col_img)
-            cv2.imwrite("debug_imgs/test.png", obj_w.data)
-
-            groups = get_cluster_info(fg)
-            display_grasps(workspace_img, groups)
-
-            group = groups[0]
-            pose,rot = self.gm.compute_grasp(group.cm, group.dir, d_img)
-            grasp_pose = self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=workspace_img.data)
-
-            self.gm.execute_grasp(grasp_pose, class_num = class_label)
-
-            #reset to start
-            self.whole_body.move_to_go()
-            self.gm.move_to_home()
-            self.gm.position_head()
-            time.sleep(3)
-
-            c_img = self.cam.read_color_data()
-            d_img = self.cam.read_depth_data()
+            if len(single_objs) > 0:
+                to_grasp = self.select_first_obj(single_objs)
+                self.run_grasp(to_grasp[0], to_grasp[1], c_img, col_img, workspace_img)
+            else:
+                fg_imgs = [self.bbox_to_fg(obj[0], c_img, col_img) for obj in obj_info]
+                groups = [get_cluster_info(fg[0])[0] for fg in fg_imgs]
+                groups = merge_groups(groups, cfg.DIST_TOL)
+                self.run_singulate(col_img, main_mask, groups)
+            img_ind += 1
+            c_img = cv2.imread(sample_data_paths[img_ind])
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
