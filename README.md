@@ -8,6 +8,32 @@ During the demo, simply provide the bounding box and class label for the next ob
 
 To restart the demo, run `endcomm.sh` to shut down all server code. Also reposition the robot correctly.
 
+### Running in Simulation
+
+Assume you have run the web demo described above, so you see the "Loading"
+symbol in the web server.  This needs to be running beforehand.
+
+If you want to run our demo in simulation, use Gazebo and a launch file. For
+instance, on Ron's machine, in this directory:
+
+```
+/home/ron/siemens_sim/sim_world
+```
+
+we can run this `roslaunch` command if we have the right files:
+
+```
+ron@agri:~/siemens_sim/sim_world$ roslaunch daniel_seita_test.launch 
+```
+
+And then you should see a world show up in Gazebo.
+
+Then run `python main/test_labeling.py` and we can see the robot move in
+simulation.
+
+**TODO: this actually doesn't work ... will need to debug (+document later)**
+
+
 ## Forming a Dataset
 
 **Update: see email I wrote to the team on April 10 at around 9am. That has the
