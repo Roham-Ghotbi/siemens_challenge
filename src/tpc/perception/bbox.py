@@ -29,7 +29,7 @@ class Bbox:
     """
     class for object bounding boxes 
     """
-    def __init__(self, points, label):
+    def __init__(self, points, label, confidence=None):
         #points should have format [xmin, ymin, xmax, ymax]
         #label should be an integer 
         self.xmin = points[0]
@@ -38,6 +38,7 @@ class Bbox:
         self.ymax = points[3]
         self.label = label
         self.points = points 
+        self.prob = confidence
 
     def test_overlap(self, other):
         if self.xmin > other.xmax or self.xmax < other.xmin:

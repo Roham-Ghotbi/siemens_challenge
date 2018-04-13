@@ -55,7 +55,7 @@ ColorImage = getattr(img, 'ColorImage')
 BinaryImage = getattr(img, 'BinaryImage')
 
 if __name__ == "__main__":
-    for i in range(0, 6):
+    for i in range(0, 4):
         path = "debug_imgs/data_chris/test" + str(i)
         curr_img = cv2.imread(path + ".png")
         main_mask = crop_img(curr_img, simple=True)

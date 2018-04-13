@@ -28,7 +28,7 @@ def hsv_channels(ind):
 	write_img(val, str(ind) + "val")
 
 if __name__ == "__main__":
-	for i in range(0, 6):
+	for i in range(0, 4):
 		hsv_channels(i)
 		# img = get_img(i)
 		# viz = view_hsv(ColorImage(img))
