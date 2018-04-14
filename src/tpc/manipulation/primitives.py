@@ -134,7 +134,7 @@ class GraspManipulator():
 
     def temp_bin_pose(self):
         p = self.start_pose 
-        self.omni_base.go(p[0] + 0.5, p[1], p[2], 300, relative=False)
+        self.omni_base.go(p[0] - 0.5, p[1], p[2], 300, relative=False)
 
     def move_to_home(self):
         p = self.start_pose

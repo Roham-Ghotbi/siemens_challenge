@@ -2,15 +2,19 @@ import numpy as np
 import os
 import sys
 import tensorflow as tf
+print tf.__version__
 import IPython
 from matplotlib import pyplot as plt
 from PIL import Image
 import time as timer
 import sys
+import os
+import cv2
+# os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
+# os.environ["CUDA_VISIBLE_DEVICES"]="0"
 sys.path.append('/home/autolab/Workspaces/michael_working/models/research')
 from object_detection.utils import label_map_util
 from object_detection.utils import visualization_utils as vis_util
-from tpc.perception.bbox import Bbox
 
 def load_image_into_numpy_array(image):
     (im_width, im_height) = image.size
@@ -134,39 +138,17 @@ class Detector():
 
         return output_dict
 
-def format_bboxes(net_output):
-    #first filter by confidence
-    scores = net_output['detection_scores']
-    classes = net_output['detection_classes']
-    boxes = net_output['detection_boxes']
-    num_valid = 0
-    while scores[num_valid] > 0.3:
-        num_valid += 1
-    filtered_output = []
-
-    for i in range(num_valid):
-        box = Bbox(boxes[i], classes[i], confidence=scores[i])
-        filtered_output.append(box)
-
-    #next rescale labels 
-
 if __name__ == '__main__':
     model_path = 'main/output_inference_graph.pb'
     label_map_path = 'main/object-detection.pbtxt'
     det = Detector(model_path, label_map_path)
     
-    
-    # det = Detector('ssd_mobilenet_v1_coco_2017_11_17', 'data/mscoco_label_map.pbtxt')
-    # det = Detector('oid', 'data/oid_bbox_trainable_label_map.pbtxt')
-    # output_dict = det.predict('test_images/image2.jpg')
-    
-    # output_dict = det.predict('../obj2/JPEGImages/rgb_raw_0002.jpg')
     path = 'debug_imgs/rgb_raw_0000.jpg'
+
     output_dict = det.predict(path)
     img = cv2.imread(path)
-     = img.shape 
-
-
-    IPython.embed()
-
-
+    boxes = format_bboxes(output_dict, img.shape)
+    for b in boxes:
+        print(b)
+        img = draw_box(img, b)
+    cv2.imwrite("debug_imgs/testing.png", img)

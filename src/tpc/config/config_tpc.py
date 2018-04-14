@@ -20,6 +20,10 @@ CHAIN_GRASPS = False
 HUES_TO_BINS = ["orange", "green-yellow", "cyan", "black", "red", "green", "blue", "yellow"]
 labels = ["Screwdriver", "Scrap", "Tube", "Tape"] #ensure this matches server.py in hsr_web
 
+net_labels = {1: "Tube", 2: "Scrap", 3: "Screwdriver", 4: "Tape"}
+CONFIDENCE_THRESH = 0.3
+EVALUATE = True
+
 """EMPIRICALLY TUNED PARAMETERs"""
 #CONENCTED COMPONENTS ALG PARAMETERS
 #number of pixels apart to be singulated
