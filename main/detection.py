@@ -2,7 +2,6 @@ import numpy as np
 import os
 import sys
 import tensorflow as tf
-print tf.__version__
 import IPython
 from matplotlib import pyplot as plt
 from PIL import Image

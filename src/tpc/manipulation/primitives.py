@@ -29,6 +29,7 @@ class GraspManipulator():
         z = self.get_z(point, d_img)
         y, x = point
         pose_name = self.gripper.get_grasp_pose(x,y,z,rot,c_img=c_img.data)
+        print(x,y,z,rot)
         return pose_name
 
     def singulate(self, waypoints, rot, c_img, d_img, expand=False):
@@ -165,9 +166,8 @@ class GraspManipulator():
             except:
                 rospy.logerr('continuing to search for AR marker')
                 i += 1
-                curr_tilt = 1.0 - (i * 1.0)/5.0
+                curr_tilt = -1 + (i * 1.0)/5.0
                 self.whole_body.move_to_joint_positions({'head_pan_joint': curr_tilt})
-                time.sleep(0.5)
         if nothing:
             print("Could not find AR marker- depositing object in default position.")
             self.temp_bin_pose()

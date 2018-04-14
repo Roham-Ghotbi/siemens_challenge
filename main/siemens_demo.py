@@ -47,7 +47,7 @@ from il_ros_hsr.core.rgbd_to_map import RGBD2Map
 sys.path.append('/home/autolab/Workspaces/michael_working/hsr_web')
 from web_labeler import Web_Labeler
 from tpc.perception.connected_components import get_cluster_info, merge_groups
-from tpc.perception.bbox import Bbox, find_isolated_objects, select_first_obj, format_net_bboxes, draw_boxes
+from tpc.perception.bbox import Bbox, find_isolated_objects_by_overlap, select_first_obj, format_net_bboxes, draw_boxes, find_isolated_objects_by_distance
 
 import tpc.config.config_tpc as cfg
 import importlib
@@ -107,28 +107,12 @@ class SiemensDemo():
 
     def run_grasp(self, bbox, c_img, col_img, workspace_img, d_img):
         print("grasping a " + cfg.labels[bbox.label])
-        #bbox has format [xmin, ymin, xmax, ymax]
-        fg, obj_w = bbox.to_mask(c_img, col_img)
-        # cv2.imwrite("debug_imgs/test.png", obj_w.data)
-        # cv2.imwrite("debug_imgs/test2.png", fg.data)
-        groups = get_cluster_info(fg)
-        curr_tol = cfg.COLOR_TOL 
-        while len(groups) == 0 and curr_tol > 10:
-            curr_tol -= 5
-            #retry with lower tolerance- probably white object 
-            fg, obj_w = bbox.to_mask(c_img, col_img, tol=curr_tol)
-            groups = get_cluster_info(fg)
 
-        if len(groups) == 0:
-            print("No object within bounding box")
-            return False
+        group = bbox.to_group(c_img, col_img)
+        display_grasps(workspace_img, [group])
 
-        display_grasps(workspace_img, groups)
-
-        group = groups[0]
         pose,rot = self.gm.compute_grasp(group.cm, group.dir, d_img)
         grasp_pose = self.gripper.get_grasp_pose(pose[0],pose[1],pose[2],rot,c_img=workspace_img.data)
-
         self.gm.execute_grasp(grasp_pose, class_num = bbox.label)
 
     def run_singulate(self, col_img, main_mask, to_singulate, d_img):
@@ -186,12 +170,15 @@ class SiemensDemo():
             bboxes = self.get_bboxes(path)
             if len(bboxes) == 0:
                 print("Cleared the workspace")
-                print("Add more objects then resume")
+                print("Add more objects, then resume")
                 IPython.embed()
             else:
                 box_viz = draw_boxes(bboxes, c_img)
                 cv2.imwrite("debug_imgs/box.png", box_viz)
-                single_objs = find_isolated_objects(bboxes)
+                single_objs = find_isolated_objects_by_overlap(bboxes)
+
+                if len(single_objs) == 0:
+                    single_objs = find_isolated_objects_by_distance(bboxes, col_img)
 
                 if len(single_objs) > 0:
                     to_grasp = select_first_obj(single_objs)

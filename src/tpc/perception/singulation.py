@@ -108,6 +108,7 @@ class Singulation():
         occupied_space = self.focus_mask.inverse()
         for i in range(len(self.other_obj_masks)):
             occupied_space += self.other_obj_masks[i]
+        occupied_space += self.obj_mask
         goal_pixel = occupied_space.most_free_pixel()
         return goal_pixel
 
@@ -175,15 +176,16 @@ class Singulation():
         """
         if self.goal_p is None:
             self.goal_p = self.get_goal_pixel()
+        return self.goal_p 
 
-        goal_dir = self.goal_p - mean
-        goal_dir = goal_dir / np.linalg.norm(goal_dir)
-        towards_goal = self.obj_mask.closest_zero_pixel(mean, goal_dir, w=40)
+        # goal_dir = self.goal_p - mean
+        # goal_dir = goal_dir / np.linalg.norm(goal_dir)
+        # towards_goal = self.obj_mask.closest_zero_pixel(mean, goal_dir, w=40)
 
-        #don't want to push too far if goal pixel is inside object cluster
-        closer_goal = min([self.goal_p, towards_goal], key = lambda p: np.linalg.norm(p - mean))
+        # #don't want to push too far if goal pixel is inside object cluster
+        # closer_goal = min([self.goal_p, towards_goal], key = lambda p: np.linalg.norm(p - mean))
 
-        return closer_goal
+        # return closer_goal
 
     def compute_singulation(self):
         """ Finds the direction in which the robot should push

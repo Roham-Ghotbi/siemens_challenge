@@ -6,8 +6,9 @@ img = importlib.import_module(cfg.IMG_MODULE)
 ColorImage = getattr(img, 'ColorImage')
 BinaryImage = getattr(img, 'BinaryImage')
 import numpy as np 
+from tpc.perception.connected_components import get_cluster_info, merge_groups
 
-def find_isolated_objects(bboxes):
+def find_isolated_objects_by_overlap(bboxes):
     valid_bboxes = []
     for curr_ind in range(len(bboxes)):
         curr_bbox = bboxes[curr_ind]
@@ -22,8 +23,42 @@ def find_isolated_objects(bboxes):
             valid_bboxes.append(curr_bbox)
     return valid_bboxes
 
+def find_isolated_objects_by_distance(bboxes, col_img):
+    groups = [box.to_group(col_img.data, col_img) for box in bboxes]
+    valid_bboxes = []
+    for curr_ind in range(len(groups)):
+        curr_group = groups[curr_ind]
+        in_pile = False 
+        for test_ind in range(len(groups)):
+            if curr_ind != test_ind:
+                test_group = groups[test_ind]
+                if curr_group.cm_near(test_group):
+                    in_pile = True
+                    break 
+        if not in_pile:
+            valid_bboxes.append(bboxes[curr_ind])
+    return valid_bboxes
+
+#effective, but too hard to figure out which class labels correspond to which groups 
+# def find_almost_isolated_objects(bboxes, col_img):
+#     fg_imgs = [box.to_mask(col_img.data, col_img) for box in bboxes]
+#     if len(fg_imgs) > 0:
+#         total_mask = fg_imgs[0][0]
+#         for im in fg_imgs[1:]:
+#             total_mask += im[0]
+#         groups = get_cluster_info(total_mask, tol = 3)
+
+#         valid_groups = []
+#         for g in groups:
+#             if not g.was_merged:
+#                 valid_groups.append(g)
+#         return valid_groups 
+#     else:
+#         return []
+
 def select_first_obj(bboxes):
-    bottom_left_bbox =  min(bboxes, key = lambda x: x.xmin + x.ymin)
+    bottom_left_bbox =  min(bboxes, key = lambda box: box.xmin - box.ymin)
+
     return bottom_left_bbox
 
 def format_net_bboxes(net_output, shape):
@@ -41,7 +76,9 @@ def format_net_bboxes(net_output, shape):
         box = Bbox(points, classes[i], scores[i])
         box.scale_from_net(shape)
         box.convert_label_from_net()
-        filtered_output.append(box)
+        to_add = box.filter_far_boxes()
+        if to_add:
+            filtered_output.append(box)
 
     return filtered_output
 
@@ -80,6 +117,24 @@ class Bbox:
         fg = obj_workspace_img.foreground_mask(tol, ignore_black=True)
         return fg, obj_workspace_img
 
+    def to_group(self, c_img, col_img):
+        fg, obj_w = self.to_mask(c_img, col_img)
+        # cv2.imwrite("debug_imgs/test.png", obj_w.data)
+        # cv2.imwrite("debug_imgs/test2.png", fg.data)
+        groups = get_cluster_info(fg)
+        curr_tol = cfg.COLOR_TOL 
+        while len(groups) == 0 and curr_tol > 10:
+            curr_tol -= 5
+            #retry with lower tolerance- probably white object 
+            fg, obj_w = self.to_mask(c_img, col_img, tol=curr_tol)
+            groups = get_cluster_info(fg)
+
+        if len(groups) == 0:
+            print("No object within bounding box")
+            return False
+
+        return groups[0]
+
     def scale_from_net(self, shape):
         h, w, dim = shape
         self.xmin = int(self.xmin * w)
@@ -100,3 +155,8 @@ class Bbox:
         ylo, yhi = self.ymin + width, self.ymax - width
         new_img[ylo:yhi,xlo:xhi] = img[ylo:yhi,xlo:xhi]
         return new_img
+
+    def filter_far_boxes(self):
+        if self.ymax < 120:
+            return False
+        return True 

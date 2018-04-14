@@ -112,7 +112,7 @@ def get_smallest(groups, n):
     groups.sort()
     return groups[:min(n, len(groups))]
 
-def get_cluster_info(img):
+def get_cluster_info(img, tol=cfg.DIST_TOL):
     """ Generates mask for
     each cluster of objects
     Parameters
@@ -128,7 +128,7 @@ def get_cluster_info(img):
     img_data = block_reduce(img_data, block_size = (cfg.SCALE_FACTOR, cfg.SCALE_FACTOR), func = np.mean)
     scaled_shape = img_data.shape
 
-    dist_tol = cfg.DIST_TOL/cfg.SCALE_FACTOR
+    dist_tol = tol/cfg.SCALE_FACTOR
 
     #find groups of adjacent foreground pixels
     groups = generate_groups(img_data, orig_shape, scaled_shape)

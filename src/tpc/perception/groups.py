@@ -36,6 +36,8 @@ class Group:
         self.dir = None
         self.mask = None
 
+        self.was_merged = False
+
     @staticmethod
     def checkDim(p1, p2):
         if len(p1) != len(p2) or len(p1) != self.ndim:
@@ -105,6 +107,7 @@ class Group:
         n, m = len(self.points), len(other.points)
         self.points = list(set(self.points + other.points)) #don't double count
         self.area = len(self.points)
+        self.was_merged = True 
 
     def get_bounds(self):
         """
@@ -146,3 +149,7 @@ class Group:
         axis = pca.components_[0]
         axis = [axis[1], -1*axis[0]]
         self.dir = axis/np.linalg.norm(axis)
+
+    def cm_near(self, other):
+        dist = np.linalg.norm(np.array(self.cm) - np.array(other.cm))
+        return dist < cfg.ISOLATED_TOL
