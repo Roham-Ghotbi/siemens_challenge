@@ -56,6 +56,7 @@ ColorImage = getattr(img, 'ColorImage')
 BinaryImage = getattr(img, 'BinaryImage')
 from detection import Detector 
 from core.data_logger import DataLogger
+from tpc.perception.workspace import Workspace
 
 """
 This class is for use with the robot
@@ -83,6 +84,13 @@ class SiemensDemo():
         self.com = COM()
 
         self.com.go_to_initial_state(self.whole_body)
+
+        self.ws = Workspace()
+        self.ws.register(ws)
+
+        
+
+
 
         self.grasp_count = 0
 
