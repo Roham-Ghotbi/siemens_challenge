@@ -76,13 +76,13 @@ class GraspManipulator():
         """
         if not(class_num is None) and class_num not in range(len(cfg.labels)):
             raise ValueError("currently ony supports classes 0 to 7")
-        self.gripper.half_gripper()
+        self.gripper.open_gripper()
 
         self.whole_body.end_effector_frame = 'hand_palm_link'
 
         #before lowering gripper, go directly above grasp position
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1),grasp_name)
-        self.whole_body.move_end_effector_pose(geometry.pose(z=0.0),grasp_name)
+        self.whole_body.move_end_effector_pose(geometry.pose(z=0.015),grasp_name)
         self.gripper.close_gripper()
         self.whole_body.move_end_effector_pose(geometry.pose(z=-0.3),grasp_name)
 
@@ -161,7 +161,7 @@ class GraspManipulator():
         while nothing and i < 10: 
             try:
                 ar_name = 'ar_marker/' + str(class_id)
-                self.whole_body.move_end_effector_pose(geometry.pose(y=0.1, z=-0.3), ar_name)
+                self.whole_body.move_end_effector_pose(geometry.pose(y=0.08, z=-0.3), ar_name)
                 nothing = False
             except:
                 rospy.logerr('continuing to search for AR marker')

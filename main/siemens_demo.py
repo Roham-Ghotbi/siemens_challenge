@@ -95,13 +95,14 @@ class SiemensDemo():
 
         self.gm = GraspManipulator(self.gp, self.gripper, self.suction, self.whole_body, self.omni_base, self.tl)
 
-        self.dl = DataLogger("stats_data/v0", cfg.EVALUATE)
+        self.dl = DataLogger("stats_data/v1", cfg.EVALUATE)
 
         self.web = Web_Labeler()
 
         model_path = 'main/output_inference_graph.pb'
         label_map_path = 'main/object-detection.pbtxt'
         self.det = Detector(model_path, label_map_path)
+        IPython.embed()
         print "after thread"
 
 

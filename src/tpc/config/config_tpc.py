@@ -22,7 +22,7 @@ labels = ["Screwdriver", "Scrap", "Tube", "Tape"] #ensure this matches server.py
 
 net_labels = {1: "Tube", 2: "Scrap", 3: "Screwdriver", 4: "Tape"}
 CONFIDENCE_THRESH = 0.3
-EVALUATE = False
+EVALUATE = True
 ISOLATED_TOL = 50
 
 """EMPIRICALLY TUNED PARAMETERs"""
