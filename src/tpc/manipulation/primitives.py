@@ -4,11 +4,14 @@ import tpc.config.config_tpc as cfg
 from hsrb_interface import geometry
 import numpy as np
 from tpc.perception.cluster_registration import class_num_to_name
+
 import rospy
 import time 
 
+
+
 class GraspManipulator():
-    def __init__(self, gp, gripper, suction, whole_body, omni_base, tl):
+    def __init__(self, gp, gripper, suction, whole_body, omni_base, tl,ws):
         self.gp = gp
         self.gripper = gripper
         self.suction = suction
@@ -17,6 +20,8 @@ class GraspManipulator():
         # self.tt = tt
         self.start_pose = self.omni_base.pose
         self.tl = tl 
+
+        self.ws = ws
 
     def get_z(self, point, d_img):
         y = int(point[0])
@@ -134,14 +139,10 @@ class GraspManipulator():
         self.whole_body.move_to_joint_positions({'head_tilt_joint':-1.15})
 
     def temp_bin_pose(self):
-        p = self.start_pose 
-        self.omni_base.go(p[0] - 0.5, p[1], p[2], 300, relative=False)
+        self.ws.move_to_pose(self.omni_base,'bin_drop')
 
     def move_to_home(self):
-        p = self.start_pose
-        self.omni_base.go(p[0], p[1], p[2], 300, relative=False)
-        # self.tt.move_to_pose(self.omni_base,'lower_mid')
-        # sys.exit()
+        self.ws.move_to_pose(self.omni_base,'start')
 
     def does_ar_exist(self, class_id):
         try:
