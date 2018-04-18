@@ -57,7 +57,7 @@ import importlib
 img = importlib.import_module(cfg.IMG_MODULE)
 ColorImage = getattr(img, 'ColorImage')
 BinaryImage = getattr(img, 'BinaryImage')
-from detection import Detector 
+from detection import Detector
 from core.data_logger import DataLogger
 from tpc.perception.workspace import Workspace
 
@@ -86,7 +86,7 @@ class SiemensDemo():
         self.cam = RGBD()
         self.com = COM()
 
-        
+
 
         self.com.go_to_initial_state(self.whole_body)
 
@@ -110,7 +110,7 @@ class SiemensDemo():
         model_path = 'main/output_inference_graph.pb'
         label_map_path = 'main/object-detection.pbtxt'
         self.det = Detector(model_path, label_map_path)
- 
+
         print "after thread"
 
 
@@ -147,21 +147,19 @@ class SiemensDemo():
 
         objs = labels['objects']
         bboxes = [Bbox(obj['box'], obj['class']) for obj in objs]
-        return bboxes 
+        return bboxes
 
     def determine_to_ask_for_help(self,bboxes,col_img):
         bboxes = deepcopy(bboxes)
         col_img = deepcopy(col_img)
 
         single_objs = find_isolated_objects_by_overlap(bboxes)
-        grasp_sucess = 1.0
-        if len(single_objs) == 0:
-            single_objs = find_isolated_objects_by_distance(bboxes, col_img)
 
         if len(single_objs) > 0:
             return False
         else:
-            return True
+            isolated_exist = find_isolated_objects_by_distance(bboxes, col_img)
+            return isolated_exist
 
     def get_bboxes(self, path,col_img):
         boxes, vis_util_image = self.get_bboxes_from_net(path)
@@ -175,7 +173,7 @@ class SiemensDemo():
             self.dl.save_stat("duration", self.helper.duration)
             self.dl.save_stat("num_online", cfg.NUM_ROBOTS_ON_NETWORK)
 
-        return boxes, vis_util_image 
+        return boxes, vis_util_image
 
     def siemens_demo(self):
         self.gm.position_head()
@@ -226,7 +224,7 @@ class SiemensDemo():
                 if cfg.EVALUATE:
                     reward = self.helper.get_reward(grasp_sucess,singulation_time)
                     self.dl.record_reward(reward)
-            
+
             #reset to start
             self.whole_body.move_to_go()
             self.gm.move_to_home()
@@ -244,4 +242,3 @@ if __name__ == "__main__":
 
     task = SiemensDemo()
     task.siemens_demo()
-

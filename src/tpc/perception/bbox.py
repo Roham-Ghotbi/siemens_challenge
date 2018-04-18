@@ -5,41 +5,45 @@ import importlib
 img = importlib.import_module(cfg.IMG_MODULE)
 ColorImage = getattr(img, 'ColorImage')
 BinaryImage = getattr(img, 'BinaryImage')
-import numpy as np 
+import numpy as np
 from tpc.perception.connected_components import get_cluster_info, merge_groups
+
+
+"""
+New metric for whether to ask for help
+For segmentation mask, compute minimum distance to another segmentation max
+Take maximum of above, and check if less than threshold t
+(basically, ask for help if all objects are within t of at least 1 other object)
+cond(argmax_i argmin_j metric(i, j)) == forall i, therexists j cond(metric(i, j))
+"""
 
 def find_isolated_objects_by_overlap(bboxes):
     valid_bboxes = []
     for curr_ind in range(len(bboxes)):
         curr_bbox = bboxes[curr_ind]
-        overlap = False 
+        overlap = False
         for test_ind in range(len(bboxes)):
             if curr_ind != test_ind:
                 test_bbox = bboxes[test_ind]
                 if curr_bbox.test_overlap(test_bbox):
                     overlap = True
-                    break 
+                    break
         if not overlap:
             valid_bboxes.append(curr_bbox)
     return valid_bboxes
 
 def find_isolated_objects_by_distance(bboxes, col_img):
     groups = [box.to_group(col_img.data, col_img) for box in bboxes]
-    valid_bboxes = []
+    min_distances = []
     for curr_ind in range(len(groups)):
         curr_group = groups[curr_ind]
-        in_pile = False 
-        for test_ind in range(len(groups)):
-            if curr_ind != test_ind:
-                test_group = groups[test_ind]
-                if curr_group.cm_near(test_group):
-                    in_pile = True
-                    break 
-        if not in_pile:
-            valid_bboxes.append(bboxes[curr_ind])
-    return valid_bboxes
+        distances = [curr_group.cm_dist(groups[i]) for i in range(len(groups)) if i != curr_ind]
+        min_distances.append(min(distances))
+    max_min_distance = max(min_distances)
+    #returns true if there exist isolated objects
+    return max_min_distance >= cfg.ISOLATED_TOL
 
-#effective, but too hard to figure out which class labels correspond to which groups 
+#effective, but too hard to figure out which class labels correspond to which groups
 # def find_almost_isolated_objects(bboxes, col_img):
 #     fg_imgs = [box.to_mask(col_img.data, col_img) for box in bboxes]
 #     if len(fg_imgs) > 0:
@@ -52,7 +56,7 @@ def find_isolated_objects_by_distance(bboxes, col_img):
 #         for g in groups:
 #             if not g.was_merged:
 #                 valid_groups.append(g)
-#         return valid_groups 
+#         return valid_groups
 #     else:
 #         return []
 
@@ -90,25 +94,25 @@ def draw_boxes(bboxes, img):
 
 class Bbox:
     """
-    class for object bounding boxes 
+    class for object bounding boxes
     """
     def __init__(self, points, label, confidence=None):
         #points should have format [xmin, ymin, xmax, ymax]
-        #label should be an integer 
+        #label should be an integer
         self.xmin = points[0]
         self.ymin = points[1]
         self.xmax = points[2]
         self.ymax = points[3]
         self.label = label
-        self.points = points 
+        self.points = points
         self.prob = confidence
 
     def test_overlap(self, other):
         if self.xmin > other.xmax or self.xmax < other.xmin:
             return False
         if self.ymin > other.ymax or self.ymax < other.ymin:
-            return False 
-        return True 
+            return False
+        return True
 
     def to_mask(self, c_img, col_img, tol=cfg.COLOR_TOL):
         obj_mask = crop_img(c_img, bycoords = [self.ymin, self.ymax, self.xmin, self.xmax])
@@ -122,10 +126,10 @@ class Bbox:
         # cv2.imwrite("debug_imgs/test.png", obj_w.data)
         # cv2.imwrite("debug_imgs/test2.png", fg.data)
         groups = get_cluster_info(fg)
-        curr_tol = cfg.COLOR_TOL 
+        curr_tol = cfg.COLOR_TOL
         while len(groups) == 0 and curr_tol > 10:
             curr_tol -= 5
-            #retry with lower tolerance- probably white object 
+            #retry with lower tolerance- probably white object
             fg, obj_w = self.to_mask(c_img, col_img, tol=curr_tol)
             groups = get_cluster_info(fg)
 
@@ -151,7 +155,7 @@ class Bbox:
         new_img = np.copy(img)
         new_img[self.ymin:self.ymax, self.xmin:self.xmax] = color
         width = 3
-        xlo, xhi = self.xmin + width, self.xmax - width 
+        xlo, xhi = self.xmin + width, self.xmax - width
         ylo, yhi = self.ymin + width, self.ymax - width
         new_img[ylo:yhi,xlo:xhi] = img[ylo:yhi,xlo:xhi]
         return new_img
@@ -159,4 +163,4 @@ class Bbox:
     def filter_far_boxes(self):
         if self.ymax < 120:
             return False
-        return True 
+        return True

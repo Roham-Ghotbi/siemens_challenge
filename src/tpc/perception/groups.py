@@ -107,7 +107,7 @@ class Group:
         n, m = len(self.points), len(other.points)
         self.points = list(set(self.points + other.points)) #don't double count
         self.area = len(self.points)
-        self.was_merged = True 
+        self.was_merged = True
 
     def get_bounds(self):
         """
@@ -150,6 +150,5 @@ class Group:
         axis = [axis[1], -1*axis[0]]
         self.dir = axis/np.linalg.norm(axis)
 
-    def cm_near(self, other):
-        dist = np.linalg.norm(np.array(self.cm) - np.array(other.cm))
-        return dist < cfg.ISOLATED_TOL
+    def cm_dist(self, other):
+        return np.linalg.norm(np.array(self.cm) - np.array(other.cm))
