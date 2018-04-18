@@ -17,21 +17,50 @@ If you want to run our demo in simulation, use Gazebo and a launch file. For
 instance, on Ron's machine, in this directory:
 
 ```
-/home/ron/siemens_sim/sim_world
+/home/ron/siemens_sim/siemens_challenge/sim_world
 ```
 
 we can run this `roslaunch` command if we have the right files:
 
 ```
-ron@agri:~/siemens_sim/sim_world$ roslaunch daniel_seita_test.launch 
+roslaunch test_room.launch
 ```
 
 And then you should see a world show up in Gazebo.
 
-Then run `python main/test_labeling.py` and we can see the robot move in
-simulation.
+(If there's an `IPython.embed()` command in there, just do a CTRL+D and
+continue, the Python code will proceed.)
 
-**TODO: this actually doesn't work ... will need to debug (+document later)**
+#### Creating a simulated environment
+
+You can start by copying the existing code in 
+
+```
+test_room.world
+test_room.launch
+```
+
+which gives you an empty room with walls. 
+
+Be aware of the parameters you use for your environment: to support accurate navigation and joint control, you must include
+```
+name="use_laser_odom" value="true"
+```
+in your launch file and make sure your environment is surrounded by obscures.
+
+#### Running demo in simulator
+
+You can launch an environment we provided by running 
+
+```
+roslaunch test_room2.launch
+```
+
+a room environment with a few cubes as grasping object and a basket as target would appear. 
+
+Please run `sim_main/test_labeling.py` for a demo.
+
+NOTE: This demo currently only runs on Ron's machine: I tweak frame transformation in Chris' existing code to fit in the simulator for now. More work is needed to clean this up, potentially includes a slightly modified version of hsr_core.
 
 
 ## Forming a Dataset
