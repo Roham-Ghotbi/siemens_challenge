@@ -150,7 +150,7 @@ class Workspace():
 		objts = robot.get('marker')
 
 		time.sleep(5)
-		#IPython.embed()
+		IPython.embed()
 		sd = objts.get_objects()
 		
 		trans, quat = self.calculate_ar_in_map(sd[0])

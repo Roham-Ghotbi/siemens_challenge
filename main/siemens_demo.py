@@ -20,6 +20,7 @@ from il_ros_hsr.core.joystick import  JoyStick
 import matplotlib.pyplot as plt
 
 import numpy as np
+from copy import deepcopy
 import numpy.linalg as LA
 from tf import TransformListener
 import tf
@@ -50,6 +51,8 @@ from tpc.perception.connected_components import get_cluster_info, merge_groups
 from tpc.perception.bbox import Bbox, find_isolated_objects_by_overlap, select_first_obj, format_net_bboxes, draw_boxes, find_isolated_objects_by_distance
 
 import tpc.config.config_tpc as cfg
+
+from tpc.helper import Helper
 import importlib
 img = importlib.import_module(cfg.IMG_MODULE)
 ColorImage = getattr(img, 'ColorImage')
@@ -83,16 +86,13 @@ class SiemensDemo():
         self.cam = RGBD()
         self.com = COM()
 
-        self.com.go_to_initial_state(self.whole_body)
-
-        self.ws = Workspace()
-        self.ws.register(ws)
-
         
 
+        self.com.go_to_initial_state(self.whole_body)
 
 
         self.grasp_count = 0
+        self.helper = Helper(cfg)
 
         self.br = tf.TransformBroadcaster()
         self.tl = TransformListener()
@@ -103,14 +103,14 @@ class SiemensDemo():
 
         self.gm = GraspManipulator(self.gp, self.gripper, self.suction, self.whole_body, self.omni_base, self.tl)
 
-        self.dl = DataLogger("stats_data/v1", cfg.EVALUATE)
+        self.dl = DataLogger("stats_data/model_base", cfg.EVALUATE)
 
-        self.web = Web_Labeler()
+        self.web = Web_Labeler(cfg.NUM_ROBOTS_ON_NETWORK)
 
         model_path = 'main/output_inference_graph.pb'
         label_map_path = 'main/object-detection.pbtxt'
         self.det = Detector(model_path, label_map_path)
-        IPython.embed()
+ 
         print "after thread"
 
 
@@ -133,14 +133,14 @@ class SiemensDemo():
         self.gm.singulate(waypoints, rot, col_img.data, d_img, expand=True)
 
     def get_bboxes_from_net(self, path):
-        output_dict = self.det.predict(path)
+        output_dict, vis_util_image = self.det.predict(path)
         plt.savefig('debug_imgs/predictions.png')
         plt.close()
         plt.clf()
         plt.cla()
         img = cv2.imread(path)
         boxes = format_net_bboxes(output_dict, img.shape)
-        return boxes
+        return boxes, vis_util_image
 
     def get_bboxes_from_web(self, path):
         labels = self.web.label_image(path)
@@ -149,14 +149,33 @@ class SiemensDemo():
         bboxes = [Bbox(obj['box'], obj['class']) for obj in objs]
         return bboxes 
 
-    def get_bboxes(self, path):
-        boxes = self.get_bboxes_from_net(path)
+    def determine_to_ask_for_help(self,bboxes,col_img):
+        bboxes = deepcopy(bboxes)
+        col_img = deepcopy(col_img)
+
+        single_objs = find_isolated_objects_by_overlap(bboxes)
+        grasp_sucess = 1.0
+        if len(single_objs) == 0:
+            single_objs = find_isolated_objects_by_distance(bboxes, col_img)
+
+        if len(single_objs) > 0:
+            return False
+        else:
+            return True
+
+    def get_bboxes(self, path,col_img):
+        boxes, vis_util_image = self.get_bboxes_from_net(path)
 
         #low confidence or no objects
-        if len(boxes) == 0:
+        if self.determine_to_ask_for_help(boxes,col_img):
+            self.helper.asked = True
+            self.helper.start_timer()
             boxes = self.get_bboxes_from_web(path)
+            self.helper.stop_timer()
+            self.dl.save_stat("duration", self.helper.duration)
+            self.dl.save_stat("num_online", cfg.NUM_ROBOTS_ON_NETWORK)
 
-        return boxes 
+        return boxes, vis_util_image 
 
     def siemens_demo(self):
         self.gm.position_head()
@@ -176,7 +195,7 @@ class SiemensDemo():
             col_img = ColorImage(c_img)
             workspace_img = col_img.mask_binary(main_mask)
 
-            bboxes = self.get_bboxes(path)
+            bboxes, vis_util_image = self.get_bboxes(path,col_img)
             if len(bboxes) == 0:
                 print("Cleared the workspace")
                 print("Add more objects, then resume")
@@ -185,21 +204,28 @@ class SiemensDemo():
                 box_viz = draw_boxes(bboxes, c_img)
                 cv2.imwrite("debug_imgs/box.png", box_viz)
                 single_objs = find_isolated_objects_by_overlap(bboxes)
-
+                grasp_sucess = 1.0
                 if len(single_objs) == 0:
                     single_objs = find_isolated_objects_by_distance(bboxes, col_img)
 
                 if len(single_objs) > 0:
                     to_grasp = select_first_obj(single_objs)
+                    singulation_time = 0.0
                     self.run_grasp(to_grasp, c_img, col_img, workspace_img, d_img)
-                    self.dl.record_success("grasp", other_data=[c_img, d_img])
+                    grasp_sucess = self.dl.record_success("grasp", other_data=[c_img, vis_util_image, d_img])
                 else:
                     #for accurate singulation should have bboxes for all
                     fg_imgs = [box.to_mask(c_img, col_img) for box in bboxes]
                     groups = [get_cluster_info(fg[0])[0] for fg in fg_imgs]
                     groups = merge_groups(groups, cfg.DIST_TOL)
                     self.run_singulate(col_img, main_mask, groups, d_img)
-                    self.dl.record_success("singulation", other_data=[c_img, d_img])
+                    sing_start = time.time()
+                    singulation_success = self.dl.record_success("singulation", other_data=[c_img, vis_util_image, d_img])
+                    singulation_time = time.time()-sing_start
+
+                if cfg.EVALUATE:
+                    reward = self.helper.get_reward(grasp_sucess,singulation_time)
+                    self.dl.record_reward(reward)
             
             #reset to start
             self.whole_body.move_to_go()
@@ -218,3 +244,4 @@ if __name__ == "__main__":
 
     task = SiemensDemo()
     task.siemens_demo()
+

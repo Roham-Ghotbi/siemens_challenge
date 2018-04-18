@@ -135,7 +135,7 @@ class Detector():
         plt.figure(figsize=IMAGE_SIZE)
         plt.imshow(image_np)
 
-        return output_dict
+        return output_dict, image_np
 
 if __name__ == '__main__':
     model_path = 'main/output_inference_graph.pb'
@@ -144,7 +144,7 @@ if __name__ == '__main__':
     
     path = 'debug_imgs/rgb_raw_0000.jpg'
 
-    output_dict = det.predict(path)
+    output_dict, image_np = det.predict(path)
     img = cv2.imread(path)
     boxes = format_bboxes(output_dict, img.shape)
     for b in boxes:
