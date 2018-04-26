@@ -7,7 +7,7 @@ ColorImage = getattr(img, 'ColorImage')
 BinaryImage = getattr(img, 'BinaryImage')
 import numpy as np
 from tpc.perception.connected_components import get_cluster_info, merge_groups
-
+import IPython
 
 """
 New metric for whether to ask for help
@@ -33,6 +33,9 @@ def find_isolated_objects_by_overlap(bboxes):
     return valid_bboxes
 
 def find_isolated_objects_by_distance(bboxes, col_img):
+    if len(bboxes) == 1:
+        return True
+
     groups = [box.to_group(col_img.data, col_img) for box in bboxes]
     min_distances = []
     for curr_ind in range(len(groups)):

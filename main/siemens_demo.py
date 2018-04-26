@@ -175,7 +175,7 @@ class SiemensDemo():
         vectors = []
 
         #low confidence or no objects
-        if self.determine_to_ask_for_help(boxes,col_img):
+        if len(boxes) == 0 or self.determine_to_ask_for_help(boxes,col_img):
             self.helper.asked = True
             self.helper.start_timer()
             boxes, vectors = self.get_bboxes_from_web(path)
