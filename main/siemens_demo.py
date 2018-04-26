@@ -146,8 +146,17 @@ class SiemensDemo():
         labels = self.web.label_image(path)
 
         objs = labels['objects']
-        bboxes = [Bbox(obj['box'], obj['class']) for obj in objs]
-        return bboxes
+        bboxes = []
+        vectors = []
+        for obj in objs:
+            if obj['motion'] == 1:
+                coords = obj['coords']
+                p0 = [coords[0], coords[1]]
+                p1 = [coords[2], coords[3]]
+                vectors.append(([p0, p1], obj['class']))
+            else:
+                bboxes.append(Bbox(obj['coords'], obj['class']))
+        return bboxes, vectors
 
     def determine_to_ask_for_help(self,bboxes,col_img):
         bboxes = deepcopy(bboxes)
@@ -163,17 +172,18 @@ class SiemensDemo():
 
     def get_bboxes(self, path,col_img):
         boxes, vis_util_image = self.get_bboxes_from_net(path)
+        vectors = []
 
         #low confidence or no objects
         if self.determine_to_ask_for_help(boxes,col_img):
             self.helper.asked = True
             self.helper.start_timer()
-            boxes = self.get_bboxes_from_web(path)
+            boxes, vectors = self.get_bboxes_from_web(path)
             self.helper.stop_timer()
             self.dl.save_stat("duration", self.helper.duration)
             self.dl.save_stat("num_online", cfg.NUM_ROBOTS_ON_NETWORK)
 
-        return boxes, vis_util_image
+        return boxes, vectors, vis_util_image
 
     def siemens_demo(self):
         self.gm.position_head()
@@ -193,12 +203,9 @@ class SiemensDemo():
             col_img = ColorImage(c_img)
             workspace_img = col_img.mask_binary(main_mask)
 
-            bboxes, vis_util_image = self.get_bboxes(path,col_img)
-            if len(bboxes) == 0:
-                print("Cleared the workspace")
-                print("Add more objects, then resume")
-                IPython.embed()
-            else:
+            bboxes, vectors, vis_util_image = self.get_bboxes(path,col_img)
+
+            if len(bboxes) > 0:
                 box_viz = draw_boxes(bboxes, c_img)
                 cv2.imwrite("debug_imgs/box.png", box_viz)
                 single_objs = find_isolated_objects_by_overlap(bboxes)
@@ -224,6 +231,13 @@ class SiemensDemo():
                 if cfg.EVALUATE:
                     reward = self.helper.get_reward(grasp_sucess,singulation_time)
                     self.dl.record_reward(reward)
+            elif len(vectors) > 0:
+                waypoints, class_labels = vectors[0]
+                self.gm.singulate(waypoints, 0, col_img.data, d_img, expand=True)
+            else:
+                print("Cleared the workspace")
+                print("Add more objects, then resume")
+                IPython.embed()
 
             #reset to start
             self.whole_body.move_to_go()
