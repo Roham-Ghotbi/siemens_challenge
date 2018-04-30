@@ -34,17 +34,16 @@ def find_isolated_objects_by_overlap(bboxes):
 
 def find_isolated_objects_by_distance(bboxes, col_img):
     if len(bboxes) == 1:
-        return True
+        return bboxes
 
     groups = [box.to_group(col_img.data, col_img) for box in bboxes]
-    min_distances = []
+    valid_bboxes = []
     for curr_ind in range(len(groups)):
         curr_group = groups[curr_ind]
         distances = [curr_group.cm_dist(groups[i]) for i in range(len(groups)) if i != curr_ind]
-        min_distances.append(min(distances))
-    max_min_distance = max(min_distances)
-    #returns true if there exist isolated objects
-    return max_min_distance >= cfg.ISOLATED_TOL
+        if min(distances) >= cfg.ISOLATED_TOL:
+            valid_bboxes.append(bboxes[curr_ind])
+    return valid_bboxes
 
 #effective, but too hard to figure out which class labels correspond to which groups
 # def find_almost_isolated_objects(bboxes, col_img):

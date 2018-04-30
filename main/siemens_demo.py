@@ -167,8 +167,8 @@ class SiemensDemo():
         if len(single_objs) > 0:
             return False
         else:
-            isolated_exist = find_isolated_objects_by_distance(bboxes, col_img)
-            return isolated_exist
+            single_objs = find_isolated_objects_by_distance(bboxes, col_img)
+            return len(single_objs) > 0
 
     def get_bboxes(self, path,col_img):
         boxes, vis_util_image = self.get_bboxes_from_net(path)
