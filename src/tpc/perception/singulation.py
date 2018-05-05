@@ -167,7 +167,7 @@ class Singulation():
         return start_p, end_p
 
     def get_goal_waypoint(self, mean):
-        """ Finds the endpoints of the first push along the borer
+        """ Finds the endpoints of the first push along the border
 
         Parameters
         ----------
@@ -176,7 +176,7 @@ class Singulation():
         """
         if self.goal_p is None:
             self.goal_p = self.get_goal_pixel()
-        return self.goal_p 
+        return self.goal_p
 
         # goal_dir = self.goal_p - mean
         # goal_dir = goal_dir / np.linalg.norm(goal_dir)

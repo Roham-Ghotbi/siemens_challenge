@@ -45,8 +45,6 @@ LINE_SIZE = 38
 #side length of square that checks grasp collisions
 #increase range to reduce false positives
 CHECK_RANGE = 2
-#range around grasp point used to calculate average depth value
-ZRANGE = 20
 
 #HSV PARAMETERS
 #cv2 range for HSV hue values
@@ -74,14 +72,25 @@ SINGULATE_START_FACTOR = 1.2
 SINGULATE_END_FACTOR = 0.75
 
 """PATHS AND DATASET PARAMETERS"""
+# robot_name = "hsr"
+robot_name = None
+if robot_name == "hsr":
+	ROBOT_MODULE = 'il_ros_hsr.core.robot_interface'
+elif robot_name == "fetch":
+	ROBOT_MODULE = 'fetch_core.core.robot_interface'
+elif robot_name is None:
+	ROBOT_MODULE = 'tpc.offline.robot_interface'
+
 #convenience parameter to change paths based on machine
-on_autolab = True
+on_autolab = False
 if on_autolab:
 	ROOT_DIR = '/media/autolab/1tb/data/'
 	DATA_PATH = ROOT_DIR + 'tpc/'
 	IMG_MODULE = 'perception'
+	WEB_PATH = '/home/autolab/Workspaces/michael_working/hsr_web'
 else:
 	ROOT_DIR = '/Users/chrispowers/Documents/research/tpc/'
 	DATA_PATH = ROOT_DIR + 'data/'
 	IMG_MODULE = 'tpc.perception.image'
+	WEB_PATH = '/Users/chrispowers/Documents/research/hsr_web'
 ROLLOUT_PATH = DATA_PATH+'rollouts-3-9/'
