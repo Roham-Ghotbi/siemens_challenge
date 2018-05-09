@@ -89,8 +89,17 @@ class SiemensDemo():
         labels = self.web.label_image(path)
 
         objs = labels['objects']
-        bboxes = [Bbox(obj['box'], obj['class']) for obj in objs]
-        return bboxes
+        bboxes = []
+        vectors = []
+        for obj in objs:
+            if obj['motion'] == 1:
+                coords = obj['coords']
+                p0 = [coords[0], coords[1]]
+                p1 = [coords[2], coords[3]]
+                vectors.append(([p0, p1], obj['class']))
+            else:
+                bboxes.append(Bbox(obj['coords'], obj['class']))
+        return bboxes, vectors
 
     def determine_to_ask_for_help(self,bboxes,col_img):
         bboxes = deepcopy(bboxes)
@@ -101,22 +110,23 @@ class SiemensDemo():
         if len(single_objs) > 0:
             return False
         else:
-            isolated_exist = find_isolated_objects_by_distance(bboxes, col_img)
-            return isolated_exist
+            single_objs = find_isolated_objects_by_distance(bboxes, col_img)
+            return len(single_objs) == 0
 
     def get_bboxes(self, path,col_img):
         boxes, vis_util_image = self.get_bboxes_from_net(path)
+        vectors = []
 
         #low confidence or no objects
-        if self.determine_to_ask_for_help(boxes,col_img):
+        if len(boxes) == 0 or self.determine_to_ask_for_help(boxes,col_img):
             self.helper.asked = True
             self.helper.start_timer()
-            boxes = self.get_bboxes_from_web(path)
+            boxes, vectors = self.get_bboxes_from_web(path)
             self.helper.stop_timer()
             self.dl.save_stat("duration", self.helper.duration)
             self.dl.save_stat("num_online", cfg.NUM_ROBOTS_ON_NETWORK)
 
-        return boxes, vis_util_image
+        return boxes, vectors, vis_util_image
 
     def siemens_demo(self):
         self.ra.go_to_start_pose()
@@ -133,16 +143,13 @@ class SiemensDemo():
             col_img = ColorImage(c_img)
             workspace_img = col_img.mask_binary(main_mask)
 
-            bboxes, vis_util_image = self.get_bboxes(path,col_img)
-            if len(bboxes) == 0:
-                print("Cleared the workspace")
-                print("Add more objects, then resume")
-                IPython.embed()
-            else:
+            bboxes, vectors, vis_util_image = self.get_bboxes(path,col_img)
+
+            if len(bboxes) > 0:
                 box_viz = draw_boxes(bboxes, c_img)
                 cv2.imwrite("debug_imgs/box.png", box_viz)
                 single_objs = find_isolated_objects_by_overlap(bboxes)
-                grasp_sucess = 1.0
+                grasp_success = 1.0
                 if len(single_objs) == 0:
                     single_objs = find_isolated_objects_by_distance(bboxes, col_img)
 
@@ -150,7 +157,7 @@ class SiemensDemo():
                     to_grasp = select_first_obj(single_objs)
                     singulation_time = 0.0
                     self.run_grasp(to_grasp, c_img, col_img, workspace_img, d_img)
-                    grasp_sucess = self.dl.record_success("grasp", other_data=[c_img, vis_util_image, d_img])
+                    grasp_success = self.dl.record_success("grasp", other_data=[c_img, vis_util_image, d_img])
                 else:
                     #for accurate singulation should have bboxes for all
                     fg_imgs = [box.to_mask(c_img, col_img) for box in bboxes]
@@ -162,8 +169,15 @@ class SiemensDemo():
                     singulation_time = time.time()-sing_start
 
                 if cfg.EVALUATE:
-                    reward = self.helper.get_reward(grasp_sucess,singulation_time)
+                    reward = self.helper.get_reward(grasp_success,singulation_time)
                     self.dl.record_reward(reward)
+            elif len(vectors) > 0:
+                waypoints, class_labels = vectors[0]
+                self.gm.singulate(waypoints, 0, col_img.data, d_img, expand=True)
+            else:
+                print("Cleared the workspace")
+                print("Add more objects, then resume")
+                IPython.embed()
 
             self.ra.go_to_start_pose()
             self.ra.go_to_start_position()
