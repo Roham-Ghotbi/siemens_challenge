@@ -21,20 +21,20 @@ class Robot_Actions():
         self.robot.position_start_pose(offsets=offsets)
         self.safe_wait()
 
-    def img_coords2pose(self, cm, dir, d_img, rot=None):
+    def img_coords2pose(self, cm, dir_vec, d_img, rot=None):
         z = self.robot.get_depth(cm, d_img)
         if rot is None:
-            rot = self.robot.get_rot(dir)
+            rot = self.robot.get_rot(dir_vec)
 
         pose_name = self.robot.create_grasp_pose(cm[1], cm[0], z, rot)
         return pose_name
 
     def grasp_at_pose(self, pose_name):
         self.robot.open_gripper()
-        self.robot.move_to_pose(grasp_name, 0.1)
-        self.robot.move_to_pose(grasp_name, -0.015)
+        self.robot.move_to_pose(pose_name, 0.1)
+        self.robot.move_to_pose(pose_name, -0.015)
         self.robot.close_gripper()
-        self.robot.move_to_pose(grasp_name, 0.3)
+        self.robot.move_to_pose(pose_name, 0.3)
 
     def deposit_obj(self, class_num):
         if class_num is None:
@@ -56,8 +56,8 @@ class Robot_Actions():
 
         self.robot.open_gripper()
 
-    def execute_grasp(self, cm, dir, d_img, class_num):
-        pose_name = self.img_coords2pose(cm, dir, d_img)
+    def execute_grasp(self, cm, dir_vec, d_img, class_num):
+        pose_name = self.img_coords2pose(cm, dir_vec, d_img)
         self.grasp_at_pose(pose_name)
         self.deposit_obj(class_num)
 

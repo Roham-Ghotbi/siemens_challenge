@@ -82,7 +82,7 @@ elif robot_name is None:
 	ROBOT_MODULE = 'tpc.offline.robot_interface'
 
 #convenience parameter to change paths based on machine
-on_autolab = False
+on_autolab = True
 if on_autolab:
 	ROOT_DIR = '/media/autolab/1tb/data/'
 	DATA_PATH = ROOT_DIR + 'tpc/'

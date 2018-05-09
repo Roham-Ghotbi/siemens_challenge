@@ -15,7 +15,7 @@ class Robot_Interface(object):
         pass
 
     def get_img_data(self):
-        sample_img_path = "data/example_images/frame_40_0.png"
+        sample_img_path = "debug_imgs/web.png"
         sample_img = cv2.imread(sample_img_path)
         sample_depth = np.zeros(sample_img.shape[:2])
         return sample_img, sample_depth
@@ -26,16 +26,16 @@ class Robot_Interface(object):
     def get_rot(self, direction):
         return 0
 
-    def create_grasp_pose(x, y, z, rot):
+    def create_grasp_pose(self, x, y, z, rot):
         return ""
 
-    def open_gripper():
+    def open_gripper(self):
         pass
 
-    def close_gripper():
+    def close_gripper(self):
         pass
 
-    def move_to_pose(pose_name, z_offset):
+    def move_to_pose(self, pose_name, z_offset):
         pass
 
     def find_ar(self, ar_number):

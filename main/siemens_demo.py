@@ -160,8 +160,7 @@ class SiemensDemo():
                     grasp_success = self.dl.record_success("grasp", other_data=[c_img, vis_util_image, d_img])
                 else:
                     #for accurate singulation should have bboxes for all
-                    fg_imgs = [box.to_mask(c_img, col_img) for box in bboxes]
-                    groups = [get_cluster_info(fg[0])[0] for fg in fg_imgs]
+                    groups = [box.to_group(c_img, col_img) for box in bboxes]
                     groups = merge_groups(groups, cfg.DIST_TOL)
                     self.run_singulate(col_img, main_mask, groups, d_img)
                     sing_start = time.time()
