@@ -168,7 +168,7 @@ class SiemensDemo():
             return False
         else:
             single_objs = find_isolated_objects_by_distance(bboxes, col_img)
-            return len(single_objs) > 0
+            return len(single_objs) == 0
 
     def get_bboxes(self, path,col_img):
         boxes, vis_util_image = self.get_bboxes_from_net(path)
@@ -209,7 +209,7 @@ class SiemensDemo():
                 box_viz = draw_boxes(bboxes, c_img)
                 cv2.imwrite("debug_imgs/box.png", box_viz)
                 single_objs = find_isolated_objects_by_overlap(bboxes)
-                grasp_sucess = 1.0
+                grasp_success = 1.0
                 if len(single_objs) == 0:
                     single_objs = find_isolated_objects_by_distance(bboxes, col_img)
 
@@ -217,7 +217,7 @@ class SiemensDemo():
                     to_grasp = select_first_obj(single_objs)
                     singulation_time = 0.0
                     self.run_grasp(to_grasp, c_img, col_img, workspace_img, d_img)
-                    grasp_sucess = self.dl.record_success("grasp", other_data=[c_img, vis_util_image, d_img])
+                    grasp_success = self.dl.record_success("grasp", other_data=[c_img, vis_util_image, d_img])
                 else:
                     #for accurate singulation should have bboxes for all
                     fg_imgs = [box.to_mask(c_img, col_img) for box in bboxes]
@@ -229,7 +229,7 @@ class SiemensDemo():
                     singulation_time = time.time()-sing_start
 
                 if cfg.EVALUATE:
-                    reward = self.helper.get_reward(grasp_sucess,singulation_time)
+                    reward = self.helper.get_reward(grasp_success,singulation_time)
                     self.dl.record_reward(reward)
             elif len(vectors) > 0:
                 waypoints, class_labels = vectors[0]
