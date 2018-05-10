@@ -14,6 +14,7 @@ from tpc.manipulation.robot_actions import Robot_Actions
 from tpc.perception.connected_components import get_cluster_info, merge_groups
 from tpc.perception.bbox import Bbox, find_isolated_objects_by_overlap, select_first_obj, format_net_bboxes, draw_boxes, find_isolated_objects_by_distance
 from tpc.helper import Helper
+from tpc.data_logger import DataLogger
 import tpc.config.config_tpc as cfg
 
 import importlib
@@ -28,7 +29,6 @@ ColorImage = getattr(img, 'ColorImage')
 BinaryImage = getattr(img, 'BinaryImage')
 
 from detection import Detector
-from core.data_logger import DataLogger
 
 """
 This class is for use with the robot
@@ -56,11 +56,11 @@ class SiemensDemo():
 
         self.ra.go_to_start_pose()
 
-        print "finished init"
+        print "Finished init"
 
 
     def run_grasp(self, bbox, c_img, col_img, workspace_img, d_img):
-        print("grasping a " + cfg.labels[bbox.label])
+        print("Grasping a " + cfg.labels[bbox.label])
 
         group = bbox.to_group(c_img, col_img)
         display_grasps(workspace_img, [group])

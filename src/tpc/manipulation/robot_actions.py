@@ -41,7 +41,7 @@ class Robot_Actions():
             #go to a temporary pose for the bins
             self.go_to_start_position(offsets=[-0.5, 0, 0])
         else:
-            print("CLASS IS " + cfg.labels[class_num])
+            print("Class is " + cfg.labels[class_num])
             self.go_to_start_position()
             found = False
             i = 0
