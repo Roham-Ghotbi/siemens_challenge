@@ -136,8 +136,7 @@ class Bbox:
             groups = get_cluster_info(fg)
 
         if len(groups) == 0:
-            print("No object within bounding box")
-            return False
+            raise ValueError("no object within bounding box")
 
         return groups[0]
 

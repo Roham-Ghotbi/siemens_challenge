@@ -72,14 +72,9 @@ SINGULATE_START_FACTOR = 1.2
 SINGULATE_END_FACTOR = 0.75
 
 """PATHS AND DATASET PARAMETERS"""
-# robot_name = "hsr"
-robot_name = None
-if robot_name == "hsr":
-	ROBOT_MODULE = 'il_ros_hsr.core.robot_interface'
-elif robot_name == "fetch":
-	ROBOT_MODULE = 'fetch_core.core.robot_interface'
-elif robot_name is None:
-	ROBOT_MODULE = 'tpc.offline.robot_interface'
+robot_name = "hsr"
+# robot_name = "fetch"
+# robot_name = None 
 
 #convenience parameter to change paths based on machine
 on_autolab = True

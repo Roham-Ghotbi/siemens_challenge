@@ -16,10 +16,14 @@ from tpc.perception.bbox import Bbox, find_isolated_objects_by_overlap, select_f
 from tpc.helper import Helper
 from tpc.data_logger import DataLogger
 import tpc.config.config_tpc as cfg
-
 import importlib
-robot_module = importlib.import_module(cfg.ROBOT_MODULE)
-Robot_Interface = getattr(robot_module, 'Robot_Interface')
+
+if cfg.robot_name == "hsr":
+    from core.hsr_robot_interface import Robot_Interface
+elif cfg.robot_name == "fetch":
+    from core.fetch_robot_interface import Robot_Interface 
+elif cfg.robot_name is None:
+    from tpc.offline.robot_interface import Robot_Interface
 
 sys.path.append('/home/autolab/Workspaces/michael_working/hsr_web')
 from web_labeler import Web_Labeler
@@ -54,24 +58,22 @@ class SiemensDemo():
         label_map_path = 'main/object-detection.pbtxt'
         self.det = Detector(model_path, label_map_path)
 
-        self.ra.go_to_start_pose()
-
         print "Finished init"
-
 
     def run_grasp(self, bbox, c_img, col_img, workspace_img, d_img):
         print("Grasping a " + cfg.labels[bbox.label])
-
-        group = bbox.to_group(c_img, col_img)
+        try:
+            group = bbox.to_group(c_img, col_img)
+        except ValueError:
+            return 
+            
         display_grasps(workspace_img, [group])
 
         self.ra.execute_grasp(group.cm, group.dir, d_img, class_num=bbox.label)
 
-    def run_singulate(self, col_img, main_mask, to_singulate, d_img):
+    def run_singulate(self, singulator, d_img):
         print("singulating")
-        singulator = Singulation(col_img, main_mask, [g.mask for g in to_singulate])
         waypoints, rot, free_pix = singulator.get_singulation()
-
         singulator.display_singulation()
         self.ra.execute_singulate(waypoints, rot, d_img)
 
@@ -94,8 +96,8 @@ class SiemensDemo():
         for obj in objs:
             if obj['motion'] == 1:
                 coords = obj['coords']
-                p0 = [coords[0], coords[1]]
-                p1 = [coords[2], coords[3]]
+                p0 = [coords[1], coords[0]]
+                p1 = [coords[3], coords[2]]
                 vectors.append(([p0, p1], obj['class']))
             else:
                 bboxes.append(Bbox(obj['coords'], obj['class']))
@@ -130,7 +132,6 @@ class SiemensDemo():
 
     def siemens_demo(self):
         self.ra.go_to_start_pose()
-
         c_img, d_img = self.robot.get_img_data()
 
         while not (c_img is None or d_img is None):
@@ -162,7 +163,8 @@ class SiemensDemo():
                     #for accurate singulation should have bboxes for all
                     groups = [box.to_group(c_img, col_img) for box in bboxes]
                     groups = merge_groups(groups, cfg.DIST_TOL)
-                    self.run_singulate(col_img, main_mask, groups, d_img)
+                    singulator = Singulation(col_img, main_mask, [g.mask for g in groups])
+                    self.run_singulate(singulator, d_img)
                     sing_start = time.time()
                     singulation_success = self.dl.record_success("singulation", other_data=[c_img, vis_util_image, d_img])
                     singulation_time = time.time()-sing_start
@@ -172,15 +174,18 @@ class SiemensDemo():
                     self.dl.record_reward(reward)
             elif len(vectors) > 0:
                 waypoints, class_labels = vectors[0]
-                self.gm.singulate(waypoints, 0, col_img.data, d_img, expand=True)
+                rot = 0
+                singulator = Singulation(col_img, main_mask, [], goal_p=waypoints[-1], waypoints=waypoints, gripper_angle=rot)
+                self.run_singulate(singulator, d_img)
+
             else:
                 print("Cleared the workspace")
                 print("Add more objects, then resume")
                 IPython.embed()
 
-            self.ra.go_to_start_pose()
             self.ra.go_to_start_position()
-
+            
+            self.ra.go_to_start_pose()
             c_img, d_img = self.robot.get_img_data()
 
 if __name__ == "__main__":

@@ -30,10 +30,6 @@ BinaryImage = getattr(img, 'BinaryImage')
 
 from detection import Detector
 
-import string
-import random
-
-
 """
 script used to find specific poses incrementally
 """

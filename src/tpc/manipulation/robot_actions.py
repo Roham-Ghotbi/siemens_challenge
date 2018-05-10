@@ -32,7 +32,7 @@ class Robot_Actions():
     def grasp_at_pose(self, pose_name):
         self.robot.open_gripper()
         self.robot.move_to_pose(pose_name, 0.1)
-        self.robot.move_to_pose(pose_name, -0.015)
+        self.robot.move_to_pose(pose_name, 0)
         self.robot.close_gripper()
         self.robot.move_to_pose(pose_name, 0.3)
 
@@ -69,6 +69,6 @@ class Robot_Actions():
         self.robot.move_to_pose(pose_names[0], 0.05)
 
         for pose_name in pose_names:
-            self.robot.move_to_pose(pose_name, 0)
+            self.robot.move_to_pose(pose_name, 0.03)
 
         self.robot.move_to_pose(pose_names[-1], 0.05)
