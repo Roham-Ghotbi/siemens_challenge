@@ -14,7 +14,7 @@ from tpc.manipulation.robot_actions import Robot_Actions
 from tpc.perception.connected_components import get_cluster_info, merge_groups
 from tpc.perception.bbox import Bbox, find_isolated_objects_by_overlap, select_first_obj, format_net_bboxes, draw_boxes, find_isolated_objects_by_distance
 from tpc.helper import Helper
-from tpc.data_logger import DataLogger
+# from tpc.data_logger import DataLogger
 import tpc.config.config_tpc as cfg
 import importlib
 
@@ -25,7 +25,7 @@ elif cfg.robot_name == "fetch":
 elif cfg.robot_name is None:
     from tpc.offline.robot_interface import Robot_Interface
 
-sys.path.append('/home/autolab/Workspaces/michael_working/hsr_web')
+sys.path.append('/home/zisu/simulator/hsr_web')
 from web_labeler import Web_Labeler
 
 img = importlib.import_module(cfg.IMG_MODULE)
@@ -51,7 +51,7 @@ class SiemensDemo():
         self.robot = Robot_Interface()
         self.helper = Helper(cfg)
         self.ra = Robot_Actions(self.robot)
-        self.dl = DataLogger("stats_data/model_base", cfg.EVALUATE)
+        # self.dl = DataLogger("stats_data/model_base", cfg.EVALUATE)
         self.web = Web_Labeler(cfg.NUM_ROBOTS_ON_NETWORK)
 
         model_path = 'main/output_inference_graph.pb'
@@ -125,8 +125,8 @@ class SiemensDemo():
             self.helper.start_timer()
             boxes, vectors = self.get_bboxes_from_web(path)
             self.helper.stop_timer()
-            self.dl.save_stat("duration", self.helper.duration)
-            self.dl.save_stat("num_online", cfg.NUM_ROBOTS_ON_NETWORK)
+            # self.dl.save_stat("duration", self.helper.duration)
+            # self.dl.save_stat("num_online", cfg.NUM_ROBOTS_ON_NETWORK)
 
         return boxes, vectors, vis_util_image
 
@@ -135,7 +135,7 @@ class SiemensDemo():
         c_img, d_img = self.robot.get_img_data()
 
         while not (c_img is None or d_img is None):
-            path = "/home/autolab/Workspaces/michael_working/siemens_challenge/debug_imgs/web.png"
+            path = "/home/zisu/simulator/siemens_challenge/debug_imgs/web.png"
             cv2.imwrite(path, c_img)
             time.sleep(2) #make sure new image is written before being read
 
@@ -158,7 +158,7 @@ class SiemensDemo():
                     to_grasp = select_first_obj(single_objs)
                     singulation_time = 0.0
                     self.run_grasp(to_grasp, c_img, col_img, workspace_img, d_img)
-                    grasp_success = self.dl.record_success("grasp", other_data=[c_img, vis_util_image, d_img])
+                    # grasp_success = self.dl.record_success("grasp", other_data=[c_img, vis_util_image, d_img])
                 else:
                     #for accurate singulation should have bboxes for all
                     groups = [box.to_group(c_img, col_img) for box in bboxes]
@@ -166,12 +166,12 @@ class SiemensDemo():
                     singulator = Singulation(col_img, main_mask, [g.mask for g in groups])
                     self.run_singulate(singulator, d_img)
                     sing_start = time.time()
-                    singulation_success = self.dl.record_success("singulation", other_data=[c_img, vis_util_image, d_img])
+                    # singulation_success = self.dl.record_success("singulation", other_data=[c_img, vis_util_image, d_img])
                     singulation_time = time.time()-sing_start
 
                 if cfg.EVALUATE:
                     reward = self.helper.get_reward(grasp_success,singulation_time)
-                    self.dl.record_reward(reward)
+                    # self.dl.record_reward(reward)
             elif len(vectors) > 0:
                 waypoints, class_labels = vectors[0]
                 rot = 0

@@ -71,7 +71,7 @@ POSES = [POSE0, POSE1, POSE2, POSE3]
 
 def find_pose(pos):
     dist = 1000 
-    grasp_pose = None
+    grasp_pose = POSE0
     for pose in POSES:
         if ((pos[0]-pose[0])**2 + (pos[1]-pose[1])**2 + (pos[2]-pose[2])**2 < dist):
             grasp_pose = pose
@@ -94,7 +94,7 @@ class LabelDemo():
         self.cam = RGBD()
         self.com = COM()
 
-        self.com.go_to_initial_state(self.whole_body)
+        # self.com.go_to_initial_state(self.whole_body)
         self.grasp_count = 0
         self.tl = TransformListener()
 
@@ -115,6 +115,16 @@ class LabelDemo():
                     tf.transformations.quaternion_from_euler(ai=0.0,aj=1.57,ak=0.0),
                     rospy.Time.now(),
                     'temp_bin',
+                    # 'head_rgbd_sensor_link')
+                    'map')
+            rospy.sleep(1)
+
+    def broadcast_temp_block(self):
+        while True:
+            self.br.sendTransform(POSE0,
+                    tf.transformations.quaternion_from_euler(ai=3.14,aj=0.0,ak=0.0),
+                    rospy.Time.now(),
+                    'grasp_0',
                     # 'head_rgbd_sensor_link')
                     'map')
             rospy.sleep(1)
@@ -153,52 +163,65 @@ class LabelDemo():
         Should apply to both the physical and simulated HSRs. Call as `python
         main/test_labeling.py`.
         """
-        self.gm.position_head()
-        time.sleep(3) #making sure the robot is finished moving
-        c_img = self.cam.read_color_data()
-        d_img = self.cam.read_depth_data()
+        # self.gm.position_head()
+        # time.sleep(3) #making sure the robot is finished moving
+        # c_img = self.cam.read_color_data()
+        # d_img = self.cam.read_depth_data()
 
-        path = "/home/ron/siemens_sim/siemens_challenge/debug_imgs/web.png"
-        cv2.imwrite(path, c_img)
-        time.sleep(2) #make sure new image is written before being read
+        # path = "/home/ron/siemens_sim/siemens_challenge/debug_imgs/web.png"
+        # cv2.imwrite(path, c_img)
+        # time.sleep(2) #make sure new image is written before being read
 
-        # print "\n new iteration"
-        main_mask = crop_img(c_img, simple=True)
-        col_img = ColorImage(c_img)
-        workspace_img = col_img.mask_binary(main_mask)
+        # # print "\n new iteration"
+        # main_mask = crop_img(c_img, simple=True)
+        # col_img = ColorImage(c_img)
+        # workspace_img = col_img.mask_binary(main_mask)
 
-        labels = self.web.label_image(path)
+        # labels = self.web.label_image(path)
 
-        obj = labels['objects'][0]
-        bbox = obj['box']
-        class_label = obj['class']
+        # obj = labels['objects'][0]
+        # bbox = obj['box']
+        # class_label = obj['class']
 
         #bbox has format [xmin, ymin, xmax, ymax]
-        fg, obj_w = self.bbox_to_fg(bbox, c_img, col_img)
-        cv2.imwrite("debug_imgs/test.png", obj_w.data)
+        # fg, obj_w = self.bbox_to_fg(bbox, c_img, col_img)
+        # cv2.imwrite("debug_imgs/test.png", obj_w.data)
+        # groups = run_connected_components(workspace_img)
 
-        groups = get_cluster_info(fg)
-        display_grasps(workspace_img, groups)
+        # groups = get_cluster_info(fg)
+        # display_grasps(workspace_img, groups)
 
-        group = groups[0]
-        print(d_img)
-        pose,rot = self.gm.compute_grasp(group.cm, group.dir, d_img)
-        pose = find_pose(pose)
-        if pose == None:
-            print("unable to find corresponding item.")
-            sys.exit()
+        # group = groups[0]
+        # print(d_img)
+        # pose,rot = self.gm.compute_grasp(group.cm, group.dir, d_img)
+        # pose = find_pose(pose)
+        # # IPython.embed()
+        # if pose == None:
+        #     print("unable to find corresponding item.")
+        #     sys.exit()
 
-        a = tf.transformations.quaternion_from_euler(ai=-2.355,aj=-3.14,ak=0.0)
-        b = tf.transformations.quaternion_from_euler(ai=0.0,aj=0.0,ak=1.57)
+        # a = tf.transformations.quaternion_from_euler(ai=-2.355,aj=-3.14,ak=0.0)
+        # b = tf.transformations.quaternion_from_euler(ai=0.0,aj=0.0,ak=1.57)
 
-        base_rot = tf.transformations.quaternion_multiply(a,b)
+        # base_rot = tf.transformations.quaternion_multiply(a,b)
 
-        print("now about to get grasp pose, w/pose: {}, rot: {}".format(pose, rot))
-        thread.start_new_thread(self.gripper.loop_broadcast,(pose,base_rot,rot))
+        # print("now about to get grasp pose, w/pose: {}, rot: {}".format(pose, rot))
+        thread.start_new_thread(self.broadcast_temp_block,())
         time.sleep(5)
-        print("now calling execute_grasp w/grasp_pose: {}".format(grasp_pose))
+        # print("now calling execute_grasp w/grasp_pose: {}".format(pose))
+        # time.sleep(5)
         # IPython.embed()
-        self.gm.execute_grasp("grasp_0")
+        self.gripper.open_gripper()
+
+        self.whole_body.end_effector_frame = 'hand_palm_link'
+
+        #before lowering gripper, go directly above grasp position
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.2),'grasp_0')
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.06),'grasp_0')
+        self.gripper.close_gripper()
+        time.sleep(10)
+        self.whole_body.move_end_effector_pose(geometry.pose(z=-0.3),'grasp_0')
+        time.sleep(5)
         self.whole_body.move_end_effector_pose(geometry.pose(),"temp_bin")
         self.gripper.open_gripper()
 

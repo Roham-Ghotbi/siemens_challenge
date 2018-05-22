@@ -27,6 +27,7 @@ class Robot_Actions():
             rot = self.robot.get_rot(dir_vec)
 
         pose_name = self.robot.create_grasp_pose(cm[1], cm[0], z, rot)
+        time.sleep(2)
         return pose_name
 
     def grasp_at_pose(self, pose_name):
@@ -41,15 +42,19 @@ class Robot_Actions():
             #go to a temporary pose for the bins
             self.go_to_start_position(offsets=[-0.5, 0, 0])
         else:
-            print("Class is " + cfg.labels[class_num])
+            IPython.embed()
+            # print("Class is " + cfg.labels[class_num])
+            print("Class is " + str(class_num))
             self.go_to_start_position()
             found = False
             i = 0
             while not found and i < 10:
                 found = self.robot.find_ar(class_num + 8) #AR numbers from 8 to 11
                 if not found:
+                    print(i)
                     curr_tilt = -1 + (i * 1.0)/5.0 #ranges from -1 to 1
                     self.robot.pan_head(curr_tilt)
+                    i += 1
             if not found:
                 print("Could not find AR marker- depositing object in default position.")
                 self.go_to_start_position(offsets=[-0.5, 0, 0])
