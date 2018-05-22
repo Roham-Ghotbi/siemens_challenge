@@ -1,0 +1,20 @@
+item {
+  id: 1
+  name: 'tube'
+}
+
+item {
+  id: 2
+  name: 'scrap'
+}
+
+item {
+  id: 3
+  name: 'screwdriver'
+}
+
+item {
+  id: 4
+  name: 'tape'
+}
+
