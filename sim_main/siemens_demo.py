@@ -47,7 +47,7 @@ then the robot executing the predicted motion
 Categories = [(1, -0.3, 0), (1, -0.1, 0), (1, 0.1, 0), (1, 0.3, 0)]
 
 def broadcast_class(i, br):
-    a = tf.transformations.quaternion_from_euler(ai=0.0,aj=-3.14,ak=0.0)
+    a = tf.transformations.quaternion_from_euler(ai=0.0,aj=-3.14,ak=1.57)
     # b = tf.transformations.quaternion_from_euler(ai=0.0,aj=0.0,ak=1.57)
 
     # base_rot = tf.transformations.quaternion_multiply(a,b)
@@ -163,7 +163,7 @@ class SiemensDemo():
         while not (c_img is None or d_img is None):
             path = "/home/zisu/simulator/siemens_challenge/debug_imgs/web.png"
             cv2.imwrite(path, c_img)
-            time.sleep(2) #make sure new image is written before being read
+            # time.sleep(0.1) #make sure new image is written before being read
 
             # print "\n new iteration"
             main_mask = crop_img(c_img, simple=True)
