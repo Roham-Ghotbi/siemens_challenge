@@ -249,7 +249,7 @@ def grasps_within_pile(color_mask):
     #segment by hsv
     for block_color in hue_counts.keys():
         #same threshold values for number of objects
-        if hue_counts[block_color] > cfg.SIZE_TOL:
+        if hue_pixels[block_color] > cfg.SIZE_TOL:
             valid_pix = hue_pixels[block_color]
             obj_mask = focus_mask.mask_by_ind(np.array(valid_pix))
             individual_masks.append(obj_mask)

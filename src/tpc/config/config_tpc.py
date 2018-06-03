@@ -28,7 +28,7 @@ DIST_TOL = 5
 #background range for thresholding the image
 COLOR_TOL = 40
 #number of pixels necssary for a cluster
-SIZE_TOL = 350
+SIZE_TOL = 200
 #amount to scale image down by to run algorithm (for speed)
 SCALE_FACTOR = 2
 

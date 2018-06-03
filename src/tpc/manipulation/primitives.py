@@ -91,10 +91,10 @@ class GraspManipulator():
             above_pose = "lego" + str(lego_class_num) + "above"
             below_pose = "lego" + str(lego_class_num) + "below"
 
-            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), above_pose)
-            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), below_pose)
+            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), grasp_name)
+            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), grasp_name)
             self.gripper.open_gripper()
-            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), above_pose)
+            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), grasp_name)
 
     def execute_suction(self, grasp_name, class_num):
         self.whole_body.end_effector_frame = "hand_l_finger_vacuum_frame"
@@ -129,7 +129,7 @@ class GraspManipulator():
     def position_head(self):
         # self.tt.move_to_pose(self.omni_base,'lower_start')
         self.whole_body.move_to_joint_positions({'head_pan_joint': 1.5})
-        self.whole_body.move_to_joint_positions({'head_tilt_joint':-0.9})
+        self.whole_body.move_to_joint_positions({'head_tilt_joint':-1.15})
 
 
     def move_to_home(self):
