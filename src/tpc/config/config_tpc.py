@@ -17,8 +17,8 @@ CHAIN_GRASPS = False
 
 """TABLE SETUP SPECIFIC VALUES"""
 #ordered by layout on floor (top to bottom with close row first)
-HUES_TO_BINS = ["orange", "green-yellow", "cyan", "black", "red", "green", "blue", "yellow"]
-
+# HUES_TO_BINS = ["orange", "green-yellow", "cyan", "black", "red", "green", "blue", "yellow"]
+HUES_TO_BINS = ["orange", "cyan", "green-yellow", "yellow"]
 
 
 """EMPIRICALLY TUNED PARAMETERs"""

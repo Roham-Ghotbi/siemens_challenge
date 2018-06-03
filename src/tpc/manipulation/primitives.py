@@ -4,15 +4,17 @@ import tpc.config.config_tpc as cfg
 from hsrb_interface import geometry
 import numpy as np
 from tpc.perception.cluster_registration import class_num_to_name
+import rospy
+import time
 
 class GraspManipulator():
-    def __init__(self, gp, gripper, suction, whole_body, omni_base):
+    def __init__(self, gp, gripper, suction, whole_body, omni_base, tl):
         self.gp = gp
         self.gripper = gripper
         self.suction = suction
         self.whole_body = whole_body
         self.omni_base = omni_base
-        # self.tt = tt
+        self.tl = tl
         self.start_pose = self.omni_base.pose
 
     def get_z(self, point, d_img):
@@ -88,13 +90,42 @@ class GraspManipulator():
 
             lego_class_num = cfg.HUES_TO_BINS.index(color_name)
 
-            above_pose = "lego" + str(lego_class_num) + "above"
-            below_pose = "lego" + str(lego_class_num) + "below"
+            # above_pose = "lego" + str(lego_class_num) + "above"
+            # below_pose = "lego" + str(lego_class_num) + "below"
 
-            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), grasp_name)
-            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), grasp_name)
-            self.gripper.open_gripper()
-            self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), grasp_name)
+            # self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), grasp_name)
+            # self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), grasp_name)
+            # self.gripper.open_gripper()
+            # self.whole_body.move_end_effector_pose(geometry.pose(z=-0.1), grasp_name)
+
+            self.place_in_bin(lego_class_num + 8)
+
+    def temp_bin_pose(self):
+        p = self.start_pose
+        self.omni_base.go(p[0], p[1], p[2], 300, relative=False)
+
+    def place_in_bin(self, class_id):
+        self.move_to_home()
+        time.sleep(1)
+        nothing = True
+        i = 0
+        while nothing and i < 10:
+            try:
+                ar_name = 'ar_marker/' + str(class_id)
+                self.whole_body.move_end_effector_pose(geometry.pose(y=0.1, z=-0.3), ar_name)
+                nothing = False
+                i += 1
+            except:
+                rospy.logerr('continuing to search for AR marker')
+                i += 1
+                curr_tilt = -1 + (i * 1.0)/5.0
+                self.whole_body.move_to_joint_positions({'head_pan_joint': curr_tilt})
+
+        if nothing:
+            print("Could not find AR marker- depositing object in default position.")
+            self.temp_bin_pose()
+
+        self.gripper.open_gripper()
 
     def execute_suction(self, grasp_name, class_num):
         self.whole_body.end_effector_frame = "hand_l_finger_vacuum_frame"

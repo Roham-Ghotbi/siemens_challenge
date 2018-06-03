@@ -89,7 +89,7 @@ class LegoDemo():
         self.gripper = Crane_Gripper(self.gp, self.cam, self.com.Options, self.robot.get('gripper'))
         self.suction = Suction_Gripper(self.gp, self.cam, self.com.Options, self.robot.get('suction'))
 
-        self.gm = GraspManipulator(self.gp, self.gripper, self.suction, self.whole_body, self.omni_base)
+        self.gm = GraspManipulator(self.gp, self.gripper, self.suction, self.whole_body, self.omni_base, self.tl)
 
         self.collision_world = hsrb_interface.collision_world.CollisionWorld("global_collision_world")
         self.collision_world.remove_all()
