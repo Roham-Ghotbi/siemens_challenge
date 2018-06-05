@@ -25,7 +25,11 @@ elif cfg.robot_name == "fetch":
 elif cfg.robot_name is None:
     from tpc.offline.robot_interface import Robot_Interface
 
-sys.path.append('/home/zisu/simulator/hsr_web')
+michael = True
+if michael:
+    sys.path.append('/home/autolab/Workspaces/michael_working/hsr_web')
+else:
+    sys.path.append('/home/zisu/simulator/hsr_web')
 from web_labeler import Web_Labeler
 
 img = importlib.import_module(cfg.IMG_MODULE)
@@ -135,7 +139,10 @@ class SiemensDemo():
         c_img, d_img = self.robot.get_img_data()
 
         while not (c_img is None or d_img is None):
-            path = "/home/zisu/simulator/siemens_challenge/debug_imgs/web.png"
+            if michael:
+                path = '/home/autolab/Workspaces/michael_working/siemens_challenge/debug_imgs/web.png'
+            else:
+                path = "/home/zisu/simulator/siemens_challenge/debug_imgs/web.png"
             cv2.imwrite(path, c_img)
             time.sleep(2) #make sure new image is written before being read
 
