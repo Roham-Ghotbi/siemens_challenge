@@ -78,15 +78,19 @@ robot_name = "hsr"
 # robot_name = None 
 
 #convenience parameter to change paths based on machine
-on_autolab = True
-if on_autolab:
+computer = "michael"
+if computer == "michael":
 	ROOT_DIR = '/media/autolab/1tb/data/'
 	DATA_PATH = ROOT_DIR + 'tpc/'
 	IMG_MODULE = 'perception'
 	WEB_PATH = '/home/autolab/Workspaces/michael_working/hsr_web'
-else:
+	SIEMENS_PATH = '/home/autolab/Workspaces/michael_working/siemens_challenge'
+elif computer == "chris":
 	ROOT_DIR = '/Users/chrispowers/Documents/research/tpc/'
 	DATA_PATH = ROOT_DIR + 'data/'
 	IMG_MODULE = 'tpc.perception.image'
 	WEB_PATH = '/Users/chrispowers/Documents/research/hsr_web'
+elif computer == "zisu":
+	WEB_PATH = '/home/zisu/simulator/hsr_web'
+	SIEMENS_PATH = '/home/zisu/simulator/siemens_challenge/'
 ROLLOUT_PATH = DATA_PATH+'rollouts-3-9/'

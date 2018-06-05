@@ -25,11 +25,7 @@ elif cfg.robot_name == "fetch":
 elif cfg.robot_name is None:
     from tpc.offline.robot_interface import Robot_Interface
 
-michael = True
-if michael:
-    sys.path.append('/home/autolab/Workspaces/michael_working/hsr_web')
-else:
-    sys.path.append('/home/zisu/simulator/hsr_web')
+sys.path.append(cfg.WEB_PATH)
 from web_labeler import Web_Labeler
 
 img = importlib.import_module(cfg.IMG_MODULE)
@@ -134,15 +130,25 @@ class SiemensDemo():
 
         return boxes, vectors, vis_util_image
 
-    def siemens_demo(self):
+    def find_grasps(self, groups, col_img):
+        to_grasp = []
+        for group in groups:
+            inner_groups = grasps_within_pile(col_img.mask_binary(group.mask))
+
+            if len(inner_groups) > 0:
+                for in_group in inner_groups:
+                    class_num = hsv_classify(col_img.mask_binary(in_group.mask))
+                    color_name = class_num_to_name(class_num)
+                    lego_class_num = cfg.HUES_TO_BINS.index(color_name)
+                    to_grasp.append((in_group, lego_class_num, color_name))
+        return to_grasp
+
+    def tools_demo(self):
         self.ra.go_to_start_pose()
         c_img, d_img = self.robot.get_img_data()
 
         while not (c_img is None or d_img is None):
-            if michael:
-                path = '/home/autolab/Workspaces/michael_working/siemens_challenge/debug_imgs/web.png'
-            else:
-                path = "/home/zisu/simulator/siemens_challenge/debug_imgs/web.png"
+            path = cfg.SIEMENS_PATH + '/debug_imgs/web.png'
             cv2.imwrite(path, c_img)
             time.sleep(2) #make sure new image is written before being read
 
@@ -195,19 +201,6 @@ class SiemensDemo():
             self.ra.go_to_start_pose()
             c_img, d_img = self.robot.get_img_data()
 
-    def find_grasps(self, groups, col_img):
-        to_grasp = []
-        for group in groups:
-            inner_groups = grasps_within_pile(col_img.mask_binary(group.mask))
-
-            if len(inner_groups) > 0:
-                for in_group in inner_groups:
-                    class_num = hsv_classify(col_img.mask_binary(in_group.mask))
-                    color_name = class_num_to_name(class_num)
-                    lego_class_num = cfg.HUES_TO_BINS.index(color_name)
-                    to_grasp.append((in_group, lego_class_num, color_name))
-        return to_grasp
-
     def lego_demo(self):
         self.ra.go_to_start_pose()
         c_img, d_img = self.robot.get_img_data()
@@ -248,9 +241,6 @@ class SiemensDemo():
                     self.run_singulate(singulator, d_img)
                     sing_start = time.time()
                     singulation_time = time.time() - sing_start
-
-                
-
             else:
                 print("Cleared the workspace")
                 print("Add more objects, then resume")
@@ -268,5 +258,5 @@ if __name__ == "__main__":
         DEBUG = False
 
     task = SiemensDemo()
-    task.siemens_demo()
+    task.tools_demo()
     # task.lego_demo()
