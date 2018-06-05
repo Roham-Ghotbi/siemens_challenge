@@ -6,7 +6,7 @@ import numpy as np
 from copy import deepcopy
 import sys
 
-from tpc.perception.cluster_registration import run_connected_components, display_grasps
+from tpc.perception.cluster_registration import run_connected_components, display_grasps, class_num_to_name, grasps_within_pile
 from tpc.perception.groups import Group
 from tpc.perception.singulation import Singulation
 from tpc.perception.crop import crop_img
@@ -21,7 +21,7 @@ import importlib
 if cfg.robot_name == "hsr":
     from core.hsr_robot_interface import Robot_Interface
 elif cfg.robot_name == "fetch":
-    from core.fetch_robot_interface import Robot_Interface 
+    from core.fetch_robot_interface import Robot_Interface
 elif cfg.robot_name is None:
     from tpc.offline.robot_interface import Robot_Interface
 
@@ -65,8 +65,8 @@ class SiemensDemo():
         try:
             group = bbox.to_group(c_img, col_img)
         except ValueError:
-            return 
-            
+            return
+
         display_grasps(workspace_img, [group])
 
         self.ra.execute_grasp(group.cm, group.dir, d_img, class_num=bbox.label)
@@ -184,7 +184,69 @@ class SiemensDemo():
                 IPython.embed()
 
             self.ra.go_to_start_position()
-            
+
+            self.ra.go_to_start_pose()
+            c_img, d_img = self.robot.get_img_data()
+
+    def find_grasps(self, groups):
+        to_grasp = []
+        for group in groups:
+            inner_groups = grasps_within_pile(col_img.mask_binary(group.mask))
+
+            if len(inner_groups) > 0:
+                for in_group in inner_groups:
+                    class_num = hsv_classify(col_img.mask_binary(in_group.mask))
+                    color_name = class_num_to_name(class_num)
+                    lego_class_num = cfg.HUES_TO_BINS.index(color_name)
+                    to_grasp.append((in_group, lego_class_num, color_name))
+        return to_grasp
+
+    def lego_demo(self):
+        self.ra.go_to_start_pose()
+        c_img, d_img = self.robot.get_img_data()
+
+        while not (c_img is None or d_img is None):
+
+            # path = "/home/Workspaces/michael_working/siemens_challenge/debug_imgs/web.png"
+            # cv2.imwrite(path, c_img)
+            # time.sleep(2) #make sure new image is written before being read
+
+            # print "\n new iteration"
+            # crop the image 
+            main_mask = crop_img(c_img, use_preset=True, arc=False)
+            col_img = ColorImage(c_img)
+            workspace_img = col_img.mask_binary(main_mask)
+
+            groups = run_connected_components(workspace_img, viz=True)
+
+            if len(groups) > 0:
+
+                to_grasp = find_grasps(groups)
+
+                if len(to_grasp) > 0:
+                    to_grasp.sort(key=lambda g:-1 * g[0].cm[0])
+                    if not cfg.CHAIN_GRASPS:
+                        to_grasp = to_grasp[0:1]
+                    display_grasps(workspace_img, [g[0] for g in to_grasp])
+                    group, label, color = to_grasp
+                    print("Grasping a " + color + "lego")
+                    self.ra.execute_grasp(group.cm, group.dir, d_img, class_num=label)
+                else:
+                    Singulation(col_img, main_mask, [g.mask for g in groups])
+                    self.run_singulate(singulator, d_img)
+                    sing_start = time.time()
+                    singulation_time = time.time() - sing_start
+
+                if cfg.EVALUATE:
+                    reward = self.helper.get_reward(grasp_success, singulation_time)
+
+            else:
+                print("Cleared the workspace")
+                print("Add more objects, then resume")
+                IPython.embed()
+
+            self.ra.go_to_start_position()
+
             self.ra.go_to_start_pose()
             c_img, d_img = self.robot.get_img_data()
 
