@@ -17,12 +17,13 @@ CHAIN_GRASPS = False
 
 """TABLE SETUP SPECIFIC VALUES"""
 #ordered by layout on floor (top to bottom with close row first)
-HUES_TO_BINS = ["orange", "green-yellow", "cyan", "black", "red", "green", "blue", "yellow"]
+# HUES_TO_BINS = ["orange", "green-yellow", "cyan", "black", "red", "green", "blue", "yellow"]
 labels = ["Screwdriver", "Scrap", "Tube", "Tape"] #ensure this matches server.py in hsr_web
+HUES_TO_BINS = ["orange", "cyan", "green-yellow", "yellow"]
 
 net_labels = {1: "Tube", 2: "Scrap", 3: "Screwdriver", 4: "Tape"}
 CONFIDENCE_THRESH = 0.3
-EVALUATE = True
+EVALUATE = False
 ISOLATED_TOL = 100
 
 ASKING_FOR_HELP_POLICY = "MODEL_BASE" #Options: "NO HELP", "SIMPLE", "MODEL_BASED"
@@ -35,7 +36,7 @@ DIST_TOL = 5
 #background range for thresholding the image
 COLOR_TOL = 40
 #number of pixels necssary for a cluster
-SIZE_TOL = 350
+SIZE_TOL = 200
 #amount to scale image down by to run algorithm (for speed)
 SCALE_FACTOR = 2
 

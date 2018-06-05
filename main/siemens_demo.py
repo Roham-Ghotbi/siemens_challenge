@@ -6,7 +6,7 @@ import numpy as np
 from copy import deepcopy
 import sys
 
-from tpc.perception.cluster_registration import run_connected_components, display_grasps, class_num_to_name, grasps_within_pile
+from tpc.perception.cluster_registration import run_connected_components, display_grasps, class_num_to_name, grasps_within_pile, hsv_classify
 from tpc.perception.groups import Group
 from tpc.perception.singulation import Singulation
 from tpc.perception.crop import crop_img
@@ -195,7 +195,7 @@ class SiemensDemo():
             self.ra.go_to_start_pose()
             c_img, d_img = self.robot.get_img_data()
 
-    def find_grasps(self, groups):
+    def find_grasps(self, groups, col_img):
         to_grasp = []
         for group in groups:
             inner_groups = grasps_within_pile(col_img.mask_binary(group.mask))
@@ -220,7 +220,7 @@ class SiemensDemo():
 
             # print "\n new iteration"
             # crop the image 
-            main_mask = crop_img(c_img, use_preset=True, arc=False)
+            main_mask = crop_img(c_img, arc=False, viz=False)
             col_img = ColorImage(c_img)
             workspace_img = col_img.mask_binary(main_mask)
 
@@ -228,24 +228,28 @@ class SiemensDemo():
 
             if len(groups) > 0:
 
-                to_grasp = find_grasps(groups)
+                to_grasp = self.find_grasps(groups, col_img)
+                grasp_success = 0.0
 
                 if len(to_grasp) > 0:
+                    grasp_success = 1.0
                     to_grasp.sort(key=lambda g:-1 * g[0].cm[0])
                     if not cfg.CHAIN_GRASPS:
                         to_grasp = to_grasp[0:1]
                     display_grasps(workspace_img, [g[0] for g in to_grasp])
-                    group, label, color = to_grasp
-                    print("Grasping a " + color + "lego")
+                    group = to_grasp[0][0]
+                    label = to_grasp[0][1]
+                    color = to_grasp[0][2]
+                    print("Grasping a " + color + " lego")
                     self.ra.execute_grasp(group.cm, group.dir, d_img, class_num=label)
+
                 else:
                     Singulation(col_img, main_mask, [g.mask for g in groups])
                     self.run_singulate(singulator, d_img)
                     sing_start = time.time()
                     singulation_time = time.time() - sing_start
 
-                if cfg.EVALUATE:
-                    reward = self.helper.get_reward(grasp_success, singulation_time)
+                
 
             else:
                 print("Cleared the workspace")
@@ -265,3 +269,4 @@ if __name__ == "__main__":
 
     task = SiemensDemo()
     task.siemens_demo()
+    # task.lego_demo()

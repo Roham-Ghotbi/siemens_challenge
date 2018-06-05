@@ -1,0 +1,14 @@
+(lp1
+(lp2
+I135
+aI308
+aa(lp3
+I161
+aI173
+aa(lp4
+I402
+aI161
+aa(lp5
+I418
+aI292
+aa.
