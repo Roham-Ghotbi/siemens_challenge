@@ -52,11 +52,11 @@ class SiemensDemo():
         self.helper = Helper(cfg)
         self.ra = Robot_Actions(self.robot)
         # self.dl = DataLogger("stats_data/model_base", cfg.EVALUATE)
-        self.web = Web_Labeler(cfg.NUM_ROBOTS_ON_NETWORK)
+        # self.web = Web_Labeler(cfg.NUM_ROBOTS_ON_NETWORK)
 
-        model_path = 'main/output_inference_graph.pb'
-        label_map_path = 'main/object-detection.pbtxt'
-        self.det = Detector(model_path, label_map_path)
+        # model_path = 'main/output_inference_graph.pb'
+        # label_map_path = 'main/object-detection.pbtxt'
+        # self.det = Detector(model_path, label_map_path)
 
         print "Finished init"
 
@@ -139,7 +139,8 @@ class SiemensDemo():
                 for in_group in inner_groups:
                     class_num = hsv_classify(col_img.mask_binary(in_group.mask))
                     color_name = class_num_to_name(class_num)
-                    lego_class_num = cfg.HUES_TO_BINS.index(color_name)
+                    # lego_class_num = cfg.HUES_TO_BINS.index(color_name)
+                    lego_class_num = cfg.HUES_TO_BINS[color_name]
                     to_grasp.append((in_group, lego_class_num, color_name))
         return to_grasp
 
@@ -258,5 +259,5 @@ if __name__ == "__main__":
         DEBUG = False
 
     task = SiemensDemo()
-    task.tools_demo()
-    # task.lego_demo()
+    # task.tools_demo()
+    task.lego_demo()

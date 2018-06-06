@@ -59,6 +59,7 @@ class Robot_Actions():
                 self.go_to_start_position(offsets=[-0.5, 0, 0])
 
         self.robot.open_gripper()
+        self.robot.close_gripper()
 
     def execute_grasp(self, cm, dir_vec, d_img, class_num):
         pose_name = self.img_coords2pose(cm, dir_vec, d_img)
