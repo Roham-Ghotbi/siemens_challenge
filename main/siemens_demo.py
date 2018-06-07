@@ -132,17 +132,20 @@ class SiemensDemo():
 
     def find_grasps(self, groups, col_img):
         to_grasp = []
+        to_singulate = []
         for group in groups:
             inner_groups = grasps_within_pile(col_img.mask_binary(group.mask))
 
-            if len(inner_groups) > 0:
+            if len(inner_groups) == 0:
+                to_singulate.append(group)
+            else:
                 for in_group in inner_groups:
                     class_num = hsv_classify(col_img.mask_binary(in_group.mask))
                     color_name = class_num_to_name(class_num)
                     # lego_class_num = cfg.HUES_TO_BINS.index(color_name)
                     lego_class_num = cfg.HUES_TO_BINS[color_name]
                     to_grasp.append((in_group, lego_class_num, color_name))
-        return to_grasp
+        return to_grasp, to_singulate
 
     def tools_demo(self):
         self.ra.go_to_start_pose()
@@ -222,11 +225,12 @@ class SiemensDemo():
 
             if len(groups) > 0:
 
-                to_grasp = self.find_grasps(groups, col_img)
+                to_grasp, to_singulate = self.find_grasps(groups, col_img)
                 grasp_success = 0.0
 
                 if len(to_grasp) > 0:
                     grasp_success = 1.0
+                    singulation_time = 0.0
                     to_grasp.sort(key=lambda g:-1 * g[0].cm[0])
                     if not cfg.CHAIN_GRASPS:
                         to_grasp = to_grasp[0:1]
@@ -238,10 +242,13 @@ class SiemensDemo():
                     self.ra.execute_grasp(group.cm, group.dir, d_img, class_num=label)
 
                 else:
-                    Singulation(col_img, main_mask, [g.mask for g in groups])
+                    singulator = Singulation(col_img, main_mask, [g.mask for g in to_singulate])
                     self.run_singulate(singulator, d_img)
                     sing_start = time.time()
                     singulation_time = time.time() - sing_start
+
+                if cfg.EVALUATE:
+                    reward = self.helper.get_reward(grasp_success,singulation_time)
             else:
                 print("Cleared the workspace")
                 print("Add more objects, then resume")
