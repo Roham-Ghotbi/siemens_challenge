@@ -10,7 +10,7 @@ class Robot_Actions():
 
     def safe_wait(self):
         #making sure the robot is finished moving
-        time.sleep(3)
+        time.sleep(0.5)
 
     def go_to_start_pose(self):
         self.robot.body_start_pose()
@@ -27,13 +27,13 @@ class Robot_Actions():
             rot = self.robot.get_rot(dir_vec)
 
         pose_name = self.robot.create_grasp_pose(cm[1], cm[0], z, rot)
-        time.sleep(2)
+        time.sleep(0.5)
         return pose_name
 
     def grasp_at_pose(self, pose_name):
         self.robot.open_gripper()
-        self.robot.move_to_pose(pose_name, 0.1)
-        self.robot.move_to_pose(pose_name, 0)
+        self.robot.move_to_pose(pose_name, 0.15 + cfg.GRIPPER_LENGTH)
+        self.robot.move_to_pose(pose_name, 0 + cfg.GRIPPER_LENGTH)
         self.robot.close_gripper()
         self.robot.move_to_pose(pose_name, 0.3)
 
@@ -42,9 +42,9 @@ class Robot_Actions():
             #go to a temporary pose for the bins
             self.go_to_start_position(offsets=[-0.5, 0, 0])
         else:
-            IPython.embed()
-            # print("Class is " + cfg.labels[class_num])
-            print("Class is " + str(class_num))
+            # IPython.embed()
+            print("Class is " + cfg.labels[class_num])
+            # print("Class is " + str(class_num))
             self.go_to_start_position()
             found = False
             i = 0
