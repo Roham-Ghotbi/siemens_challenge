@@ -25,7 +25,7 @@ CONFIDENCE_THRESH = 0.3
 EVALUATE = True
 ISOLATED_TOL = 100
 
-ASKING_FOR_HELP_POLICY = "MODEL_BASE" #Options: "NO HELP", "SIMPLE", "MODEL_BASED"
+ASKING_FOR_HELP_POLICY = "NO HELP" #Options: "NO HELP", "SIMPLE", "MODEL_BASED"
 NUM_ROBOTS_ON_NETWORK = 1
 
 """EMPIRICALLY TUNED PARAMETERs"""
@@ -45,6 +45,8 @@ LINE_SIZE = 38
 #side length of square that checks grasp collisions
 #increase range to reduce false positives
 CHECK_RANGE = 2
+
+GRIPPER_LENGTH = 0.02
 
 #HSV PARAMETERS
 #cv2 range for HSV hue values
