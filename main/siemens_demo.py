@@ -240,6 +240,7 @@ class SiemensDemo():
                     color = to_grasp[0][2]
                     print("Grasping a " + color + " lego")
                     self.ra.execute_grasp(group.cm, group.dir, d_img, class_num=label)
+                    self.ra.prepare(class_num=label)
 
                 else:
                     singulator = Singulation(col_img, main_mask, [g.mask for g in to_singulate])

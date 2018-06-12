@@ -48,7 +48,7 @@ class Robot_Actions():
             found = False
             i = 0
             while not found and i < 10:
-                found = self.robot.find_ar(class_num + 8) #AR numbers from 8 to 11
+                found = self.robot.find_ar(class_num + 6) #AR numbers from 8 to 11
                 if not found:
                     print(i)
                     curr_tilt = -1 + (i * 1.0)/5.0 #ranges from -1 to 1
@@ -60,6 +60,9 @@ class Robot_Actions():
 
         self.robot.open_gripper()
         self.robot.close_gripper()
+
+    def prepare(self, class_num):
+        self.robot.move_to_temp(class_num + 6)
 
     def execute_grasp(self, cm, dir_vec, d_img, class_num):
         pose_name = self.img_coords2pose(cm, dir_vec, d_img)
