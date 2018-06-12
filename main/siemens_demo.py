@@ -33,6 +33,7 @@ ColorImage = getattr(img, 'ColorImage')
 BinaryImage = getattr(img, 'BinaryImage')
 
 from detection import Detector
+from mask_rcnn_detection import detect
 
 """
 This class is for use with the robot
@@ -43,7 +44,7 @@ then the robot executing the predicted motion
 
 class SiemensDemo():
 
-    def __init__(self):
+    def __init__(self, maskrcnn=False):
         """
         Class that runs decluttering task
 
@@ -57,7 +58,7 @@ class SiemensDemo():
         # model_path = 'main/output_inference_graph.pb'
         # label_map_path = 'main/object-detection.pbtxt'
         # self.det = Detector(model_path, label_map_path)
-
+        self.maskrcnn = maskrcnn
         print "Finished init"
 
     def run_grasp(self, bbox, c_img, col_img, workspace_img, d_img):
@@ -78,11 +79,15 @@ class SiemensDemo():
         self.ra.execute_singulate(waypoints, rot, d_img)
 
     def get_bboxes_from_net(self, path):
-        output_dict, vis_util_image = self.det.predict(path)
-        plt.savefig('debug_imgs/predictions.png')
-        plt.close()
-        plt.clf()
-        plt.cla()
+        if not self.maskrcnn:
+            output_dict, vis_util_image = self.det.predict(path)
+            plt.savefig('debug_imgs/predictions.png')
+            plt.close()
+            plt.clf()
+            plt.cla()
+        else:
+            output_dict = detect(path)
+            vis_util_image = None
         img = cv2.imread(path)
         boxes = format_net_bboxes(output_dict, img.shape)
         return boxes, vis_util_image
@@ -142,7 +147,6 @@ class SiemensDemo():
                 for in_group in inner_groups:
                     class_num = hsv_classify(col_img.mask_binary(in_group.mask))
                     color_name = class_num_to_name(class_num)
-                    # lego_class_num = cfg.HUES_TO_BINS.index(color_name)
                     lego_class_num = cfg.HUES_TO_BINS[color_name]
                     to_grasp.append((in_group, lego_class_num, color_name))
         return to_grasp, to_singulate
@@ -156,7 +160,6 @@ class SiemensDemo():
             cv2.imwrite(path, c_img)
             time.sleep(2) #make sure new image is written before being read
 
-            # print "\n new iteration"
             main_mask = crop_img(c_img, simple=True)
             col_img = ColorImage(c_img)
             workspace_img = col_img.mask_binary(main_mask)
@@ -210,13 +213,6 @@ class SiemensDemo():
         c_img, d_img = self.robot.get_img_data()
 
         while not (c_img is None or d_img is None):
-
-            # path = "/home/Workspaces/michael_working/siemens_challenge/debug_imgs/web.png"
-            # cv2.imwrite(path, c_img)
-            # time.sleep(2) #make sure new image is written before being read
-
-            # print "\n new iteration"
-            # crop the image 
             main_mask = crop_img(c_img, arc=False, viz=False)
             col_img = ColorImage(c_img)
             workspace_img = col_img.mask_binary(main_mask)
