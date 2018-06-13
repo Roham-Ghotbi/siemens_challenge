@@ -33,7 +33,7 @@ ColorImage = getattr(img, 'ColorImage')
 BinaryImage = getattr(img, 'BinaryImage')
 
 from detection import Detector
-from mask_rcnn_detection import detect
+# from mask_rcnn_detection import detect
 
 """
 This class is for use with the robot
@@ -58,7 +58,7 @@ class SiemensDemo():
         # model_path = 'main/output_inference_graph.pb'
         # label_map_path = 'main/object-detection.pbtxt'
         # self.det = Detector(model_path, label_map_path)
-        self.maskrcnn = maskrcnn
+        self.maskrcnn = False
         print "Finished init"
 
     def run_grasp(self, bbox, c_img, col_img, workspace_img, d_img):

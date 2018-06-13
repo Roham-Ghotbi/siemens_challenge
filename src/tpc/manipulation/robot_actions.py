@@ -62,6 +62,7 @@ class Robot_Actions():
         self.robot.close_gripper()
 
     def prepare(self, class_num):
+        self.safe_wait()
         self.robot.move_to_temp(class_num + 6)
 
     def execute_grasp(self, cm, dir_vec, d_img, class_num):
