@@ -27,12 +27,14 @@ class Robot_Actions():
             rot = self.robot.get_rot(dir_vec)
 
         pose_name = self.robot.create_grasp_pose(cm[1], cm[0], z, rot)
-        time.sleep(0.5)
+        time.sleep(1)
         return pose_name
 
     def grasp_at_pose(self, pose_name):
         self.robot.open_gripper()
         self.robot.move_to_pose(pose_name, 0.15 + cfg.GRIPPER_LENGTH)
+        # IPython.embed()
+        self.safe_wait()
         self.robot.move_to_pose(pose_name, 0 + cfg.GRIPPER_LENGTH)
         self.robot.close_gripper()
         self.robot.move_to_pose(pose_name, 0.3)

@@ -46,7 +46,7 @@ LINE_SIZE = 38
 #increase range to reduce false positives
 CHECK_RANGE = 2
 
-GRIPPER_LENGTH = 0.02
+GRIPPER_LENGTH = 0.03
 
 #HSV PARAMETERS
 #cv2 range for HSV hue values
