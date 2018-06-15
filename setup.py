@@ -1,5 +1,5 @@
 """
-Setup of Deep LfD python codebase
+Setup of Toyota Picking Challenge (tpc) python codebase
 Author: Michael Laskey
 """
 from setuptools import setup
@@ -10,5 +10,5 @@ setup(name='tpc',
       author='Michael Laskey',
       author_email='laskeymd@berkeley.edu',
       package_dir={'': 'src'},
-      packages=['tpc', 'tpc.config', 'tpc.perception', 'tpc.manipulation']
+      packages=['tpc', 'tpc.config', 'tpc.perception', 'tpc.manipulation', 'tpc.data', 'tpc.offline', 'tpc.detection']
      )

@@ -1,0 +1,8 @@
+IPython
+opencv-python
+Pillow
+Flask
+flask-jsonpify
+flask_sqlalchemy
+psiturk
+Pyro4

@@ -1,7 +1,7 @@
 import os
 import numpy as np
 
-"""CONFIG FILE FOR TPC LEGO PROJECT"""
+"""CONFIG FILE FOR FOG ROBOTICS DECLUTTERING PROJECT"""
 
 """OPTIONS FOR DEMO"""
 #whether to save rollouts
@@ -16,10 +16,8 @@ CHAIN_GRASPS = False
 
 
 """TABLE SETUP SPECIFIC VALUES"""
-#ordered by layout on floor (top to bottom with close row first)
-# HUES_TO_BINS = ["orange", "green-yellow", "cyan", "black", "red", "green", "blue", "yellow"]
+
 labels = ["Screwdriver", "Scrap", "Tube", "Tape"] #ensure this matches server.py in hsr_web
-# HUES_TO_BINS = ["orange", "cyan", "green-yellow", "yellow"]
 HUES_TO_BINS = {"cyan": 1 , "blue": 2, "green-yellow": 3, "green": 4, "yellow": 5, "red": 6, "orange": 7, "black": 8}
 
 net_labels = {1: "Tube", 2: "Scrap", 3: "Screwdriver", 4: "Tape"}
@@ -76,7 +74,7 @@ SINGULATE_END_FACTOR = 0.75
 """PATHS AND DATASET PARAMETERS"""
 robot_name = "hsr"
 # robot_name = "fetch"
-# robot_name = None 
+# robot_name = None
 
 #convenience parameter to change paths based on machine
 computer = "michael"

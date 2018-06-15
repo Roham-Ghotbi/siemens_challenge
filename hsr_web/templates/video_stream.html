@@ -1,0 +1,93 @@
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>Simple Canvas Game</title>
+		<style>
+			table, td { border: 1px solid black;}
+
+			.dropbtn {
+			    /*background: linear-gradient(#D3D3D3, white);*/
+				color: white;
+				background-color: #428bca;
+				border-color: #357ebd;
+			  font-size: 18px;
+				height:30px;
+				/*line-height:22px;*/
+			  border-style:solid;
+				border-width:1px;
+			  cursor: pointer;
+				width:220px;
+			}
+
+			.dropdown {
+			    position: relative;
+			    display: inline-block;
+			}
+
+			.dropdown-content {
+			    display: none;
+			    position: absolute;
+					color:white;
+					background-color: white;
+			    min-width: 220px;
+			    z-index: 1;
+			}
+
+			.dropdown-content a {
+			    color: white;
+			    padding: 12px 16px;
+			    text-decoration: none;
+			    display: block;
+			}
+
+			.dropdown-content a:hover {background-color: #428bca}
+
+			.dropdown:hover .dropdown-content {
+			    display: block;
+			}
+
+			.dropdown:hover .dropbtn {
+			    background-color: #428bca;
+			}
+
+			.dropmenu-btn {
+				background-color: #428bca;
+				box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+				width:220px;
+			}
+
+			.dropmenu-btn a:hover {
+				background-color: white;
+			}
+
+		</style>
+	</head>
+	<body>
+		<script src="static/js/izzy_labeling.js"></script>
+
+		<div style="position:relative;margin: 0 auto;width:420px">
+			<canvas id="imgcanvas" width="420" height="420" style="position:absolute;left:0px;top:0px;"></canvas>
+			<canvas id="bboxcanvas" width="420" height="420" style="position:absolute;left:0px;top:0px;"></canvas>
+			<div id="gif" style="position:absolute;left:-70px;top:0px;visibility:hidden"><img src="static/images/source.gif"/></div>
+
+			<div style="position:relative;margin: 0 auto;width:220px">
+				<div class="dropdown" style="position:absolute;left:0px;top:500px;">
+				  <button class="dropbtn"> <p id="clabel"> </p></button>
+				  <div id="labelmenu" class="dropdown-content"> </div>
+				</div>
+			</div>
+
+			<div style="position:relative;margin: 0 auto;width:220px">
+				<div class="dropdown" style="position:absolute;left:0px;top:550px;">
+				  <button class="dropbtn"> <p id="mlabel"> </p></button>
+				  <div id="motionmenu" class="dropdown-content"> </div>
+				</div>
+			</div>
+
+			<div style="position:relative;margin: 0 auto;width:220px">
+				<input type="button" class="dropbtn" id="clear" value="Clear All" style="position:absolute;left:0px;top:600px;width:100px;"/>
+				<input type="button" class="dropbtn" id="submit" value="Send" style="position:absolute;left:120px;top:600px;width:100px;"/>
+			</div>
+		</div>
+	</body>
+</html>
