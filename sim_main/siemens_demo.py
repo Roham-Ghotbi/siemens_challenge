@@ -92,7 +92,7 @@ class SiemensDemo():
         self.auto = auto
         if auto:
             self.dm, self.sm, self.om = setup_delete_spawn_service()
-            spawn_from_uniform(10, self.sm)
+            spawn_from_uniform(20, self.sm)
 
         print "Finished init"
 
@@ -190,6 +190,7 @@ class SiemensDemo():
                 box_viz = draw_boxes(bboxes, c_img)
                 cv2.imwrite("debug_imgs/box.png", box_viz)
                 single_objs = find_isolated_objects_by_overlap(bboxes)
+                print("single_objs: {}".format(single_objs))
                 grasp_success = 1.0
                 if len(single_objs) == 0:
                     single_objs = find_isolated_objects_by_distance(bboxes, col_img)
@@ -222,10 +223,10 @@ class SiemensDemo():
 
             if self.auto and i %3 == 0:
                 clean_floor(self.dm, self.om)
-                spawn_from_uniform(10, self.sm)
+                spawn_from_uniform(20, self.sm)
 
             else:
-                print("Cleared the workspace")
+                print("Cleared the workspace (i={})".format(i))
                 print("Add more objects, then resume")
                 # IPython.embed()
 
