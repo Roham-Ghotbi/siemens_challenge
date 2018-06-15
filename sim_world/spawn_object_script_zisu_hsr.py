@@ -10,14 +10,13 @@ LIMIT = {'x':(-0.3, 0.5), 'y':(0.6, 1.4), 'rad':(0, 3.14)}
 # QUATER = tf.transformations.quaternion_from_euler(0,0,0)
 # ORIENT = Quaternion(QUATER[0], QUATER[1], QUATER[2], QUATER[3])
 
-# We can't use scrap1 (due to gazebo7 issue) and tape3 (due to `.obj` issue),
-# which is in the siemens code. Also Zisu didn't use screwdriver4.
-MODEL_PATH = "/home/daniel/siemens_challenge/sim_world/toolbox_fetch/"
-MODEL_LIST = ["screwdriver1", "screwdriver2", "screwdriver3", "tape2", "tube1"]
-MODEL_TYPE = ["screwdriver", "tape", "tube"]
+MODEL_PATH = "/home/zisu/simulator/siemens_challenge/sim_world/toolbox/"
+MODEL_LIST = ["screwdriver1", "screwdriver2", "screwdriver3", "tape2", "tape3", "tube1", "scrap1"]
+MODEL_TYPE = ["screwdriver", "tape", "tube", "scrap"]
 
 
 def setup_delete_spawn_service():
+    """This method create rosservice call for spawning objects and deleting objects"""
     print("Waiting for gazebo services...")
     # rospy.init_node("spawn_products_in_bins")
     rospy.wait_for_service("gazebo/delete_model")
@@ -31,7 +30,6 @@ def setup_delete_spawn_service():
     object_monitor = rospy.ServiceProxy("gazebo/get_world_properties", GetWorldProperties)
 
     return delete_model, spawn_model, object_monitor
-
 
 def get_object_list(object_monitor):
     lst = []
@@ -47,17 +45,14 @@ def get_object_list(object_monitor):
             lst.append(name)
     return lst
 
-
 def delete_object(name, delete_model):
     delete_model(name)
-
 
 def clean_floor(delete_model, object_monitor):
     object_lst = get_object_list(object_monitor)
     for obj in object_lst:
         delete_object(obj, delete_model)
         rospy.sleep(0.5)
-
 
 def spawn_from_uniform(n, spawn_model):
     for i in range(n):
@@ -83,7 +78,6 @@ def spawn_from_uniform(n, spawn_model):
         spawn_model(object_name, object_xml, "", object_pose, "world")
         rospy.sleep(0.5)
 
-
 def spawn_from_gaussian(n, spawn_model):
     for i in range(n):
         # item
@@ -108,11 +102,12 @@ def spawn_from_gaussian(n, spawn_model):
         spawn_model(object_name, object_xml, "", object_pose, "world")
         rospy.sleep(0.5)
 
-
 if __name__ == '__main__':
     delete_model, spawn_model, object_monitor = setup_delete_spawn_service()
+
     print(get_object_list(object_monitor))
+
     # spawn_from_uniform(10, spawn_model)
     clean_floor(delete_model, object_monitor)
-    spawn_from_gaussian(20, spawn_model)
+    # spawn_from_gaussian(10, spawn_model)
 

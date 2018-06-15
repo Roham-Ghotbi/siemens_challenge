@@ -74,20 +74,27 @@ SINGULATE_START_FACTOR = 1.2
 SINGULATE_END_FACTOR = 0.75
 
 """PATHS AND DATASET PARAMETERS"""
-robot_name = "hsr"
-# robot_name = "fetch"
+#robot_name = "hsr"
+robot_name = "fetch"
 # robot_name = None 
 
 #convenience parameter to change paths based on machine
-on_autolab = True
-if on_autolab:
-	ROOT_DIR = '/media/autolab/1tb/data/'
-	DATA_PATH = ROOT_DIR + 'tpc/'
-	IMG_MODULE = 'perception'
-	WEB_PATH = '/home/autolab/Workspaces/michael_working/hsr_web'
-else:
-	ROOT_DIR = '/Users/chrispowers/Documents/research/tpc/'
-	DATA_PATH = ROOT_DIR + 'data/'
-	IMG_MODULE = 'tpc.perception.image'
-	WEB_PATH = '/Users/chrispowers/Documents/research/hsr_web'
+## on_autolab = True
+## if on_autolab:
+## 	ROOT_DIR = '/media/autolab/1tb/data/'
+## 	DATA_PATH = ROOT_DIR + 'tpc/'
+## 	IMG_MODULE = 'perception'
+## 	WEB_PATH = '/home/autolab/Workspaces/michael_working/hsr_web'
+## else:
+## 	ROOT_DIR = '/Users/chrispowers/Documents/research/tpc/'
+## 	DATA_PATH = ROOT_DIR + 'data/'
+## 	IMG_MODULE = 'tpc.perception.image'
+## 	WEB_PATH = '/Users/chrispowers/Documents/research/hsr_web'
+
+ROOT_DIR = '/home/daniel/siemens_challenge/src/tpc/'
+DATA_PATH = ROOT_DIR + 'data/'
+IMG_MODULE = 'tpc.perception.image'
+WEB_PATH = '/home/daniel/hsr_web'
+
+
 ROLLOUT_PATH = DATA_PATH+'rollouts-3-9/'

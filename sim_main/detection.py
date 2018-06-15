@@ -11,7 +11,10 @@ import os
 import cv2
 # os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
 # os.environ["CUDA_VISIBLE_DEVICES"]="0"
-sys.path.append('/home/autolab/Workspaces/michael_working/models/research')
+#sys.path.append('/home/autolab/Workspaces/michael_working/models/research')
+sys.path.append('/home/daniel/models/research')
+#sys.path.append('/home/daniel/models/research/object_detection')
+#sys.path.append('/home/daniel/models/research/object_detection/utils')
 from object_detection.utils import label_map_util
 from object_detection.utils import visualization_utils as vis_util
 

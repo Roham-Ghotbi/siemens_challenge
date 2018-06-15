@@ -25,19 +25,22 @@ import rospy
 if cfg.robot_name == "hsr":
     from core.hsr_robot_interface import Robot_Interface
 elif cfg.robot_name == "fetch":
-    from core.fetch_robot_interface import Robot_Interface 
+    from fetch_core.robot_interface import Robot_Interface
 elif cfg.robot_name is None:
     from tpc.offline.robot_interface import Robot_Interface
 
-sys.path.append('/home/zisu/simulator/hsr_web')
+#sys.path.append('/home/zisu/simulator/hsr_web')
+sys.path.append('/home/daniel/hsr_web')
 from web_labeler import Web_Labeler
 
 img = importlib.import_module(cfg.IMG_MODULE)
 ColorImage = getattr(img, 'ColorImage')
 BinaryImage = getattr(img, 'BinaryImage')
 
+sys.path.append('/home/daniel/siemens_challenge/sim_main')
 from detection import Detector
-sys.path.append('/home/zisu/simulator/siemens_challenge/sim_world')
+#sys.path.append('/home/zisu/simulator/siemens_challenge/sim_world')
+sys.path.append('/home/daniel/siemens_challenge/sim_world')
 from spawn_object_script import *
 from gazebo_msgs.srv import DeleteModel, SpawnModel, GetWorldProperties
 
@@ -89,7 +92,7 @@ class SiemensDemo():
         self.auto = auto
         if auto:
             self.dm, self.sm, self.om = setup_delete_spawn_service()
-            spawn_from_uniform(6, self.sm)
+            spawn_from_uniform(10, self.sm)
 
         print "Finished init"
 
@@ -164,15 +167,17 @@ class SiemensDemo():
         return boxes, vectors, vis_util_image
 
     def siemens_demo(self):
+        print("inside siemens demo!")
         loop_broadcast_classes()
         self.ra.go_to_start_pose()
         c_img, d_img = self.robot.get_img_data()
 
         i = 0
         while not (c_img is None or d_img is None):
-            path = "/home/zisu/simulator/siemens_challenge/debug_imgs/web.png"
+            #path = "/home/zisu/simulator/siemens_challenge/debug_imgs/web.png"
+            path = "/home/daniel/siemens_challenge/debug_imgs/web.png"
             cv2.imwrite(path, c_img)
-            # time.sleep(0.1) #make sure new image is written before being read
+            time.sleep(0.1) #make sure new image is written before being read
 
             # print "\n new iteration"
             main_mask = crop_img(c_img, simple=True)
@@ -193,7 +198,7 @@ class SiemensDemo():
                     to_grasp = select_first_obj(single_objs)
                     singulation_time = 0.0
                     self.run_grasp(to_grasp, c_img, col_img, workspace_img, d_img)
-                    IPython.embed()
+                    #IPython.embed()
                     # grasp_success = self.dl.record_success("grasp", other_data=[c_img, vis_util_image, d_img])
                     i+=1
                 else:
@@ -217,7 +222,7 @@ class SiemensDemo():
 
             if self.auto and i %3 == 0:
                 clean_floor(self.dm, self.om)
-                spawn_from_uniform(6, self.sm)
+                spawn_from_uniform(10, self.sm)
 
             else:
                 print("Cleared the workspace")
