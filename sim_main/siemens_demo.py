@@ -37,6 +37,9 @@ ColorImage = getattr(img, 'ColorImage')
 BinaryImage = getattr(img, 'BinaryImage')
 
 from detection import Detector
+sys.path.append('/home/zisu/simulator/siemens_challenge/sim_world')
+from spawn_object_script import *
+from gazebo_msgs.srv import DeleteModel, SpawnModel, GetWorldProperties
 
 """
 This class is for use with the robot
@@ -68,7 +71,7 @@ def loop_broadcast_classes():
 
 class SiemensDemo():
 
-    def __init__(self):
+    def __init__(self, auto=False):
         """
         Class that runs decluttering task
 
@@ -82,6 +85,11 @@ class SiemensDemo():
         model_path = 'main/output_inference_graph.pb'
         label_map_path = 'main/object-detection.pbtxt'
         self.det = Detector(model_path, label_map_path)
+
+        self.auto = auto
+        if auto:
+            self.dm, self.sm, self.om = setup_delete_spawn_service()
+            spawn_from_uniform(6, self.sm)
 
         print "Finished init"
 
@@ -160,6 +168,7 @@ class SiemensDemo():
         self.ra.go_to_start_pose()
         c_img, d_img = self.robot.get_img_data()
 
+        i = 0
         while not (c_img is None or d_img is None):
             path = "/home/zisu/simulator/siemens_challenge/debug_imgs/web.png"
             cv2.imwrite(path, c_img)
@@ -184,7 +193,9 @@ class SiemensDemo():
                     to_grasp = select_first_obj(single_objs)
                     singulation_time = 0.0
                     self.run_grasp(to_grasp, c_img, col_img, workspace_img, d_img)
+                    IPython.embed()
                     # grasp_success = self.dl.record_success("grasp", other_data=[c_img, vis_util_image, d_img])
+                    i+=1
                 else:
                     #for accurate singulation should have bboxes for all
                     groups = [box.to_group(c_img, col_img) for box in bboxes]
@@ -204,10 +215,14 @@ class SiemensDemo():
                 singulator = Singulation(col_img, main_mask, [], goal_p=waypoints[-1], waypoints=waypoints, gripper_angle=rot)
                 self.run_singulate(singulator, d_img)
 
+            if self.auto and i %3 == 0:
+                clean_floor(self.dm, self.om)
+                spawn_from_uniform(6, self.sm)
+
             else:
                 print("Cleared the workspace")
                 print("Add more objects, then resume")
-                IPython.embed()
+                # IPython.embed()
 
             self.ra.go_to_start_position()
             
@@ -215,10 +230,10 @@ class SiemensDemo():
             c_img, d_img = self.robot.get_img_data()
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        DEBUG = True
-    else:
-        DEBUG = False
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-auto", action="store_true")
+    args = parser.parse_args()
 
-    task = SiemensDemo()
+    task = SiemensDemo(args.auto)
     task.siemens_demo()

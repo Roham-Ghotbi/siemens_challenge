@@ -16,7 +16,7 @@ from tpc.manipulation.robot_actions import Robot_Actions
 # from tpc.data.helper import Helper
 # from tpc.data.data_logger import DataLogger
 import tpc.config.config_tpc as cfg
-from tpc.detection.detection import Detector
+from tpc.detection.detector import Detector
 # from tpc.detection.maskrcnn_detect import detect
 import importlib
 
@@ -240,8 +240,7 @@ class DeclutterDemo():
                     color = to_grasp[0][2]
                     print("Grasping a " + color + " lego")
                     self.ra.execute_grasp(group.cm, group.dir, d_img, class_num=label)
-                    self.ra.prepare(class_num=label)
-
+                    self.ra.go_back()
                 else:
                     singulator = Singulation(col_img, main_mask, [g.mask for g in to_singulate])
                     self.run_singulate(singulator, d_img)
@@ -267,5 +266,8 @@ if __name__ == "__main__":
         DEBUG = False
 
     task = DeclutterDemo()
-    # task.tools_demo()
-    task.lego_demo()
+    tools = False
+    if tools:
+        task.tools_demo()
+    else:
+        task.lego_demo()
