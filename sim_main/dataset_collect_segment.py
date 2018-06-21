@@ -64,16 +64,16 @@ class DataCollection():
 
 	def collect(self, dataset_size=10):
 
-		IMDIR_RGB = 'sim_img_seg/rgb/'
+		IMDIR = 'sim_img_seg/'
 		# IMDIR_DEPTH = 'sim_img_seg/depth/'
 
-		num = len([x for x in os.listdir(IMDIR_RGB)])
+		num = len([x for x in os.listdir(IMDIR)])
 
 
 		for i in range(dataset_size):
 			print(i)
-			if not os.path.exists(IMDIR_RGB+str(i+num)):
-				os.makedirs(IMDIR_RGB+str(i+num))
+			if not os.path.exists(IMDIR+str(i+num)):
+				os.makedirs(IMDIR+str(i+num))
 
 			n = np.random.randint(5, 10)
 
@@ -83,16 +83,17 @@ class DataCollection():
 			for j in range(len(labels)):
 				c_img, d_img = self.robot.get_img_data()
 				delete_object(labels[len(labels) - 1 - j], self.dm)
-				cv2.imwrite(IMDIR_RGB+str(i+num)+'/rgb_{}.png'.format(str(len(labels) - 1 - j)), c_img)
+				cv2.imwrite(IMDIR+str(i+num)+'/rgb_{}.png'.format(str(len(labels) - 1 - j)), c_img)
+				cv2.imwrite(IMDIR+str(i+num)+'/depth_{}.png'.format(str(len(labels) - 1 - j)), d_img)
 				time.sleep(0.5)
 
-			with open(IMDIR_RGB+str(i+num)+"/labels.json", 'w') as f:
+			with open(IMDIR+str(i+num)+"/labels.json", 'w') as f:
 				json.dump(labels, f)
 			clean_floor(self.dm, self.om)
 
-			find_item_masks(IMDIR_RGB+str(i+num))
-			draw_masks(IMDIR_RGB+str(i+num))
-			create_segment_label(IMDIR_RGB+str(i+num))
+			find_item_masks(IMDIR+str(i+num))
+			draw_masks(IMDIR+str(i+num))
+			create_segment_label(IMDIR+str(i+num))
 
 
 			time.sleep(3)
