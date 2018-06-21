@@ -176,18 +176,40 @@ def create_segment_label(folder_path):
 
 	et.SubElement(bbox_root, "segmented").text = "0"
 
-
 	for filename in listdir(folder_path):
 		if filename.split(".")[1] == "png" and filename.split("_")[0] != 'rgb':
 			mask = cv2.imread(folder_path+"/"+filename, 0)
 			seg, bb = find_contour_and_bounding_box(mask)
+			class_label = re.split('(\d+)', filename)[0]
+
 			if seg is None:
 				continue
-			single_item = {"label": re.split('(\d+)', filename)[0], "line_color": None, "fill_color": None, "points": seg}
+
+			# json add item
+			single_item = {"label": class_label, "line_color": None, "fill_color": None, "points": seg}
 			seg_label["shapes"].append(single_item)
 
+			# xml add item
+			obj_info = et.SubElement(bbox_root, "object")
+
+			et.SubElement(obj_info, "name").text = class_label
+			et.SubElement(obj_info, "pose").text = "Unspecified"
+			et.SubElement(obj_info, "truncated").text = "0"
+			et.SubElement(obj_info, "difficult").text = "0"
+
+			bbox = et.SubElement(obj_info, "bndbox")
+			et.SubElement(bbox, "xmin").text = str(bb[0])
+			et.SubElement(bbox, "ymin").text = str(bb[1])
+			et.SubElement(bbox, "xmax").text = str(bb[2])
+			et.SubElement(bbox, "ymax").text = str(bb[3])
+
+
+	# write to json
 	with open(folder_path+"/"+"rgb_"+str(item_num-1)+".json", "w") as out:
 		json.dump(seg_label, out)
 
+	# write to xml tree
+	tree = et.ElementTree(bbox_root)
+	tree.write(folder_path+"/"+"rgb_"+str(item_num-1)+".xml")
 
 

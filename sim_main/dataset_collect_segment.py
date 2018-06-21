@@ -92,6 +92,7 @@ class DataCollection():
 
 			find_item_masks(IMDIR_RGB+str(i+num))
 			draw_masks(IMDIR_RGB+str(i+num))
+			create_segment_label(IMDIR_RGB+str(i+num))
 
 
 			time.sleep(3)
