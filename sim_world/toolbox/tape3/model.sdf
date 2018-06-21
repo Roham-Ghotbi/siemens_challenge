@@ -3,14 +3,14 @@
     <link name="link">
       <pose frame="">-0 0 0.005 0 -0 0</pose>
       <inertial>
-        <mass>0.0125</mass>
+        <mass>0.00125</mass>
         <inertia>
-          <ixx>7.6e-07</ixx>
+          <ixx>7.6e-08</ixx>
           <ixy>0</ixy>
           <ixz>0</ixz>
-          <iyy>1.052e-05</iyy>
+          <iyy>1.052e-06</iyy>
           <iyz>0</iyz>
-          <izz>1.107e-05</izz>
+          <izz>1.107e-06</izz>
         </inertia>
         <pose frame="">0 0 0 0 -0 0</pose>
       </inertial>
@@ -31,11 +31,15 @@
       <collision name="collision">
         <laser_retro>0</laser_retro>
         <max_contacts>10</max_contacts>
-        <pose frame="">-0.0001 0.011347266 0 0 0 0</pose>
+        <pose frame="">-0.0001 0.011347266 0 1.57 0 0</pose>
         <geometry>
-          <box>
+          <!-- <box>
             <size>0.078146368 0.024120973 0.077343548</size>
-          </box>
+          </box> -->
+          <cylinder>
+            <radius>0.039073184</radius>
+            <length>0.024120973</length>
+          </cylinder>
         </geometry>
         <surface>
           <friction>

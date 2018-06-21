@@ -1,7 +1,9 @@
 import cv2
 import numpy as np
 import json
-from os import listdir
+from os import listdir, path
+import re
+import xml.etree.ElementTree as et
 
 def read_img(img_path):
 	return cv2.imread(img_path, 0)
@@ -82,9 +84,10 @@ def reduce_noice(mask):
 
 def find_contour_and_bounding_box(mask):
 	im2, contours, hierarchy = cv2.findContours(mask, 1, 1)
-	if len(contours) == 0:
-		return None
+	if len(contours) != 1:
+		return None, None
 	x, y, w, h = cv2.boundingRect(contours[0])
+	contours = [pt[0].tolist() for pt in contours[0]]
 
 	return contours, [x, y, x + w, y + h]
 
@@ -133,6 +136,58 @@ def draw_masks(folder_path):
 	cv2.imwrite(folder_path+"/compare_imgs2.png", img)
 
 
+def create_segment_label(folder_path):
+	with open(folder_path+"/"+"labels.json") as f:
+		lst = json.load(f)
+	item_num = len(lst)
+
+	# set up segmentation json file
+	seg_label = {
+		"shapes":[],
+		"lineColor": [
+			0,
+			255,
+			0,
+			128
+		],
+		"fillColor": [
+			255,
+			0,
+			0,
+			128
+		], 
+		"imagePath": "rgb_"+str(item_num-1)+".png"
+	}
+
+	# set up bounding box xml
+	bbox_root = et.Element("annotate")
+
+	et.SubElement(bbox_root, "folder").text = folder_path
+
+	et.SubElement(bbox_root, "filename").text = path.abspath("rgb_"+str(item_num-1)+".png")
+
+	source = et.SubElement(bbox_root, "source")
+	et.SubElement(source, "database").text = "Unknown"
+
+	size = et.SubElement(bbox_root, "size")
+	et.SubElement(size, "width").text = "640"
+	et.SubElement(size, "height").text = "480"
+	et.SubElement(size, "depth").text = "3"
+
+	et.SubElement(bbox_root, "segmented").text = "0"
+
+
+	for filename in listdir(folder_path):
+		if filename.split(".")[1] == "png" and filename.split("_")[0] != 'rgb':
+			mask = cv2.imread(folder_path+"/"+filename, 0)
+			seg, bb = find_contour_and_bounding_box(mask)
+			if seg is None:
+				continue
+			single_item = {"label": re.split('(\d+)', filename)[0], "line_color": None, "fill_color": None, "points": seg}
+			seg_label["shapes"].append(single_item)
+
+	with open(folder_path+"/"+"rgb_"+str(item_num-1)+".json", "w") as out:
+		json.dump(seg_label, out)
 
 
 

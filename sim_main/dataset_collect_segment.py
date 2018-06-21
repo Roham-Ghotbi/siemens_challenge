@@ -62,7 +62,7 @@ class DataCollection():
 		self.ra.go_to_start_pose()
 		time.sleep(2)
 
-	def collect(self, dataset_size=90):
+	def collect(self, dataset_size=10):
 
 		IMDIR_RGB = 'sim_img_seg/rgb/'
 		# IMDIR_DEPTH = 'sim_img_seg/depth/'

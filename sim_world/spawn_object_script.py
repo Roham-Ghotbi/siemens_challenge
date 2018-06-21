@@ -6,13 +6,13 @@ import random
 import numpy as np
 import re
 
-LIMIT = {'x':(-0.3, 0.5), 'y':(0.6, 1.4), 'rad':(0, 3.14)}
+LIMIT = {'x':(-0.1, 0.3), 'y':(0.8, 1.2), 'rad':(0, 3.14)}
 # QUATER = tf.transformations.quaternion_from_euler(0,0,0)
 # ORIENT = Quaternion(QUATER[0], QUATER[1], QUATER[2], QUATER[3])
 
 MODEL_PATH = "/home/zisu/simulator/siemens_challenge/sim_world/toolbox/"
-MODEL_LIST = ["screwdriver1", "screwdriver2", "screwdriver3", "tape2", "tape3", "tube1", "scrap1"]
-MODEL_TYPE = ["screwdriver", "tape", "tube", "scrap"]
+MODEL_LIST = ["screwdriver1", "screwdriver2", "screwdriver3", "screwdriver4", "screwdriver5", "tape2", "tape3", "tube1", "hammer1", "wrench1"]#, "scrap1"]
+MODEL_TYPE = ["screwdriver", "tape", "tube", "scrap", "hammer", "wrench"]
 
 
 def setup_delete_spawn_service():
@@ -47,14 +47,16 @@ def get_object_list(object_monitor):
 
 def delete_object(name, delete_model):
     delete_model(name)
+    return name
 
 def clean_floor(delete_model, object_monitor):
     object_lst = get_object_list(object_monitor)
     for obj in object_lst:
         delete_object(obj, delete_model)
-        rospy.sleep(0.5)
+        rospy.sleep(2)
 
 def spawn_from_uniform(n, spawn_model):
+    tags = []
     for i in range(n):
         # item
         model_tag = random.choice(MODEL_LIST)
@@ -77,6 +79,8 @@ def spawn_from_uniform(n, spawn_model):
         object_name = model_tag+"_"+str(i)
         spawn_model(object_name, object_xml, "", object_pose, "world")
         rospy.sleep(0.5)
+        tags.append(model_tag)
+    return tags
 
 def spawn_from_gaussian(n, spawn_model):
     for i in range(n):

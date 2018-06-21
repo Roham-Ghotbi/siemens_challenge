@@ -2,21 +2,21 @@
   <world name='megaweb'>
     <physics name='default_physics' default='0' type='ode'>
       <max_step_size>0.001</max_step_size>
-      <real_time_factor>10</real_time_factor>
-      <real_time_update_rate>0</real_time_update_rate>
+      <real_time_factor>1</real_time_factor>
+      <real_time_update_rate>1000</real_time_update_rate>
     </physics>
     <scene>
       <ambient>1 1 1 1</ambient>
       <background>0.7 0.7 0.7 1</background>
       <shadows>0</shadows>
     </scene>
-<!--     <gui fullscreen='0'>
+    <gui fullscreen='0'>
       <camera name='camera_world'>
         <pose frame=''>1.2947 0.711664 3.82012 0.000945 1.31495 -2.85208</pose>
         <view_controller>orbit</view_controller>
         <projection_type>perspective</projection_type>
       </camera>
-    </gui> -->
+    </gui>
     <model name='ground_plane'>
       <static>1</static>
       <link name='link'>
