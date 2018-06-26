@@ -61,8 +61,8 @@ class Robot_Actions():
         self.robot.open_gripper()
         self.robot.close_gripper()
 
-    def prepare(self, class_num):
-        self.robot.move_to_temp(class_num + 6)
+    def go_back(self):
+        self.robot.move_base(-0.15)
 
     def execute_grasp(self, cm, dir_vec, d_img, class_num):
         pose_name = self.img_coords2pose(cm, dir_vec, d_img)
