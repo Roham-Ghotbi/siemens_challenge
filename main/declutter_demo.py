@@ -267,5 +267,8 @@ if __name__ == "__main__":
         DEBUG = False
 
     task = DeclutterDemo()
-    # task.tools_demo()
-    task.lego_demo()
+    simple = True
+    if simple:
+        task.lego_demo()
+    else:
+        task.tools_demo()

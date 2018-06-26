@@ -2,9 +2,13 @@
 
 ## Running the demo
 
-The current version of the demo resides in `main/test_labeling.py`. Before running this script, follow the instructions on the hsr_web repository to start a server and run psiturk. Once the loading icon appears, you are ready to run the demo script. The robot's initial position should be sideways so its head can turn left to face the objects. 
+The current version of the demo resides in `main/declutter_demo.py`. The robot's initial position should be sideways so its head can turn left to face the objects. If the objects are simple (objects whose defining feature is color), set the variable "simple" to True and the demo will use a color-based segmentation. If the objects are complex (color is not the defining feature) then set the variable "simple" to False and the demo will use an object detection network. If the objects are not simple, before running this script follow the instructions to run the web labeler in the hsr_web folder to start a server and run psiturk. Once the loading icon appears, you are ready to run the demo script. (the web labeler does not need to be run if the objects are simple) To run the demo simply execute:
 
-During the demo, simply provide the bounding box and class label for the next object: the HSR will grasp it, return to its start position to get a clear view of the HSR markers, drop the object in the correct box, then return to its start position to begin the loop again. (note- in this version of the demo the HSR will only attempt grasps, so ensure the labeled object has sufficient clearance).
+```
+python main/declutter_demo.py
+```
+
+At each iteration of the demo, the HSR will determine the level of clutter in the pile of objects and either compute a grasp point or execute a singulation. If a grasp is computed, the HSR will grasp the desired object, return to its start position to get a clear view of the AR markers on the bins, drop the object in the correct bin, then return to its start position to begin the loop again. If a singulation strategy is determined, the HSR will singulate the pile of objects and then return to its start position to begin the loop again. During the demo, the web labeler may ask for bounding box and class label for the next object if the demo is not confident enough about the objects.
 
 To restart the demo, run `endcomm.sh` to shut down all server code. Also reposition the robot correctly.
 
@@ -33,14 +37,14 @@ continue, the Python code will proceed.)
 
 #### Creating a simulated environment
 
-You can start by copying the existing code in 
+You can start by copying the existing code in
 
 ```
 test_room.world
 test_room.launch
 ```
 
-which gives you an empty room with walls. 
+which gives you an empty room with walls.
 
 Be aware of the parameters you use for your environment: to support accurate navigation and joint control, you must include
 ```
@@ -50,13 +54,13 @@ in your launch file and make sure your environment is surrounded by obscures.
 
 #### Running demo in simulator
 
-You can launch an environment we provided by running 
+You can launch an environment we provided by running
 
 ```
 roslaunch test_room2.launch
 ```
 
-a room environment with a few cubes as grasping object and a basket as target would appear. 
+a room environment with a few cubes as grasping object and a basket as target would appear.
 
 Please run `sim_main/test_labeling.py` for a demo.
 
@@ -82,7 +86,7 @@ To do this:
 
   ```
   In [1]: whole_body.joint_positions
-  Out[1]: 
+  Out[1]:
   {'arm_flex_joint': -0.005953039901891888,
    'arm_lift_joint': 1.408264702741982e-07,
    'arm_roll_joint': -1.5700016753088877,
