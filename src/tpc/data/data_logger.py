@@ -46,7 +46,7 @@ class DataLogger():
 	def record_success(self,stat_name,other_data=None):
 
 		while True:
-			print "WAS "+ stat_name + "SUCCESUFL (Y/N)?"
+			print("WAS "+ stat_name + "SUCCESUFL (Y/N)?")
 			ans =raw_input('(y/n): ')
 
 			if ans == 'y':

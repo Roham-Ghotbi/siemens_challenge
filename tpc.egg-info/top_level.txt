@@ -1,2 +1,0 @@
-src/tpc/config
-src/tpc/perception

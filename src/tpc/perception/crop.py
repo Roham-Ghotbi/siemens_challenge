@@ -15,7 +15,7 @@ ColorImage = getattr(img, 'ColorImage')
 BinaryImage = getattr(img, 'BinaryImage')
 
 from tpc.perception.cluster_registration import draw_point
-import cPickle as pickle
+import pickle
 
 
 

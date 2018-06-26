@@ -45,7 +45,7 @@ class Detector():
         NUM_CLASSES = 600
 
 
-        print "Reading graph..."
+        print("Reading graph...")
         self.detection_graph = tf.Graph()
         with self.detection_graph.as_default():
             od_graph_def = tf.GraphDef()
@@ -53,7 +53,7 @@ class Detector():
                 serialized_graph = fid.read()
                 od_graph_def.ParseFromString(serialized_graph)
                 tf.import_graph_def(od_graph_def, name='')
-        print "Done reading graph."
+        print("Done reading graph.")
 
         label_map = label_map_util.load_labelmap(PATH_TO_LABELS)
         self.categories = label_map_util.convert_label_map_to_categories(label_map, max_num_classes=NUM_CLASSES, use_display_name=True)
@@ -118,7 +118,7 @@ class Detector():
         start_time = timer.time()
         output_dict = self.run_inference_for_single_image(image_np, self.detection_graph)
         end_time = timer.time()
-        print "final time: " + str(end_time - start_time)
+        print("final time: " + str(end_time - start_time))
         # Visualization of the results of a detection.
 
         vis_util.visualize_boxes_and_labels_on_image_array(
@@ -141,7 +141,7 @@ if __name__ == '__main__':
     model_path = 'main/output_inference_graph.pb'
     label_map_path = 'main/object-detection.pbtxt'
     det = Detector(model_path, label_map_path)
-    
+
     path = 'debug_imgs/rgb_raw_0000.jpg'
 
     output_dict, image_np = det.predict(path)
