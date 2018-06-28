@@ -67,20 +67,26 @@ def select_first_obj(bboxes):
 
     return bottom_left_bbox
 
-def format_net_bboxes(net_output, shape):
+def format_net_bboxes(net_output, shape, maskrcnn=False):
     #first filter by confidence
-    scores = net_output['detection_scores'].round(2)
-    classes = net_output['detection_classes']
-    boxes = net_output['detection_boxes']
+    if maskrcnn:
+        scores = net_output['scores'].round(2)
+        classes = net_output['class_ids']
+        boxes = net_output['rois']
+    else:
+        scores = net_output['detection_scores'].round(2)
+        classes = net_output['detection_classes']
+        boxes = net_output['detection_boxes']
     num_valid = 0
-    while scores[num_valid] > cfg.CONFIDENCE_THRESH:
+    while num_valid < len(scores) and scores[num_valid] > cfg.CONFIDENCE_THRESH:
         num_valid += 1
     filtered_output = []
 
     for i in range(num_valid):
         points = [boxes[i][1], boxes[i][0], boxes[i][3], boxes[i][2]]
         box = Bbox(points, classes[i], scores[i])
-        box.scale_from_net(shape)
+        if not maskrcnn:
+            box.scale_from_net(shape)
         box.convert_label_from_net()
         to_add = box.filter_far_boxes()
         if to_add:

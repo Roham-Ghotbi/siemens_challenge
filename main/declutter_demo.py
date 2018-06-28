@@ -17,8 +17,7 @@ from tpc.manipulation.robot_actions import Robot_Actions
 # from tpc.data.data_logger import DataLogger
 import tpc.config.config_tpc as cfg
 from tpc.detection.detector import Detector
-# from tpc.detection.maskrcnn_detect import detect
-import importlib
+from tpc.detection.maskrcnn_detect import detect
 
 if cfg.robot_name == "hsr":
     from core.hsr_robot_interface import Robot_Interface
@@ -30,6 +29,7 @@ elif cfg.robot_name is None:
 sys.path.append("hsr_web/")
 from web_labeler import Web_Labeler
 
+import importlib
 img = importlib.import_module(cfg.IMG_MODULE)
 ColorImage = getattr(img, 'ColorImage')
 BinaryImage = getattr(img, 'BinaryImage')
@@ -53,10 +53,12 @@ class DeclutterDemo():
         # self.dl = DataLogger("stats_data/model_base", cfg.EVALUATE)
         self.web = Web_Labeler(cfg.NUM_ROBOTS_ON_NETWORK)
 
-        model_path = 'main/model/output_inference_graph.pb'
-        label_map_path = 'main/model/object-detection.pbtxt'
-        self.det = Detector(model_path, label_map_path)
         self.maskrcnn = maskrcnn
+        if not self.maskrcnn:
+            model_path = 'main/model/output_inference_graph.pb'
+            label_map_path = 'main/model/object-detection.pbtxt'
+            self.det = Detector(model_path, label_map_path)
+
         print("Finished Initialization")
 
     def run_grasp(self, bbox, c_img, col_img, workspace_img, d_img):

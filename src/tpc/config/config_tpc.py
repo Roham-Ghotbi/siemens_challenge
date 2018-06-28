@@ -76,12 +76,14 @@ robot_name = "hsr"
 # robot_name = "fetch"
 # robot_name = None
 
+IMG_MODULE = "tpc.perception.image"
+
 #convenience parameter to change paths based on machine
 computer = "michael"
 if computer == "michael":
 	ROOT_DIR = '/media/autolab/1tb/data/'
 	DATA_PATH = ROOT_DIR + 'tpc/'
-	IMG_MODULE = 'perception'
+	IMG_MODULE = 'tpc.perception.image'
 	WEB_PATH = '/home/autolab/Workspaces/michael_working/hsr_web'
 	SIEMENS_PATH = '/home/autolab/Workspaces/michael_working/siemens_challenge'
 elif computer == "chris":

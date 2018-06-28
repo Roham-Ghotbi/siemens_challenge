@@ -15,10 +15,10 @@ import matplotlib.pyplot as plt
 import IPython
 
 # Root directory of the project
-ROOT_DIR = os.path.abspath("../Mask_RCNN/")
+ROOT_DIR = os.path.abspath("main/model/")
 
 # Import Mask RCNN
-sys.path.append(ROOT_DIR)  # To find local version of the library
+# sys.path.append(ROOT_DIR)  # To find local version of the library
 from mrcnn.config import Config
 from mrcnn import utils
 import mrcnn.model as modellib
@@ -27,7 +27,7 @@ from mrcnn.model import log
 
 
 # Directory to save logs and trained model
-ROOT_DIR = os.path.abspath("../")
+# ROOT_DIR = os.path.abspath("../")
 MODEL_DIR = os.path.join(ROOT_DIR, "logs")
 MODEL_DIR2 = os.path.join(ROOT_DIR, "logs")
 MODEL_PATH = os.path.join(MODEL_DIR2, "mask_rcnn_grasps.h5")
@@ -86,6 +86,7 @@ def detect(image_path):
     visualize.display_instances(image, r['rois'], r['masks'], r['class_ids'],
                                 class_names, r['scores'], ax=ax)
     plt.savefig('debug_imgs/predictions.png')
+    return results[0]
 
 if __name__ == '__main__':
     detect('dataset_val/images/rgb_raw_0089.png')

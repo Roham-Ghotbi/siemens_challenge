@@ -53,16 +53,16 @@ class Workspace():
 	def __init__(self):
 
 
-		
+
 
 		self.tl = TransformListener()
 		self.br = TransformBroadcaster()
-		
-		
-		#table = cw.add_box(z = TABLE_WIDTH, x= TABLE_LENGTH, y = TABLE_HEIGHT, 
+
+
+		#table = cw.add_box(z = TABLE_WIDTH, x= TABLE_LENGTH, y = TABLE_HEIGHT,
 		#	pose = geometry.pose(x = TABLE_LENGTH/2.0, y = TABLE_HEIGHT/2.0, z = TABLE_WIDTH /2.0), frame_id = 'ar_marker/14' )
 
-	
+
 
 	def broadcast_pose(self,pose,label):
 
@@ -72,7 +72,7 @@ class Workspace():
                     rospy.Time.now(),
                     label,
                     'map')
-	
+
 	def move_to_pose(self,base,label):
 
 		base.move(geometry.pose(),500.0,ref_frame_id = label)
@@ -89,27 +89,17 @@ class Workspace():
 
 			M_t_L = np.matmul(self.M_t_A,L_t_rot)
 
-
-
-		
-
 		trans = tf.transformations.translation_from_matrix(M_t_L)
+		quat = tf.transformations.quaternion_from_matrix(M_t_L)
 
- 		quat = tf.transformations.quaternion_from_matrix(M_t_L)
-
-
- 		return trans, quat
-
-
-
-
+		return trans, quat
 
 	def calculate_ar_in_map(self,obj):
 
 		ar_pose = obj.get_pose(ref_frame_id = 'ar_marker/20')
 		marker_pose = obj.get_pose(ref_frame_id = 'map')
 
-		
+
 		M_t_O = tf.transformations.quaternion_matrix(marker_pose.ori)
 		M_t_trans = tf.transformations.translation_matrix(marker_pose.pos)
 		M_t_O[:,3] = M_t_trans[:,3]
@@ -121,22 +111,17 @@ class Workspace():
 		self.M_t_A = np.matmul(M_t_O,LA.inv(A_t_O))
 
 		trans = tf.transformations.translation_from_matrix(self.M_t_A)
+		quat = tf.transformations.quaternion_from_matrix(self.M_t_A)
 
- 		quat = tf.transformations.quaternion_from_matrix(self.M_t_A)
+		print("TRANS ",trans)
+		print("ROTATION ",quat)
 
- 		print "TRANS ",trans
- 		print "ROTATION ",quat
-
- 		return trans,quat
-
+		return trans,quat
 
 
- 	def make_new_pose(self,offsets,label,rot = None):
 
- 		t,q = self.cal_transform(offsets,rot = rot)
-		# top_corner_trans[1] = top_corner_trans[1] + (2*OFFSET+TABLE_WIDTH)
-		# top_corner_trans[0] = top_corner_trans[0] + (OFFSET+TABLE_LENGTH/2.0)
-
+	def make_new_pose(self,offsets,label,rot = None):
+		t,q = self.cal_transform(offsets,rot = rot)
 		pose = {}
 		pose['trans'] = t
 		pose['quat'] = q
@@ -152,11 +137,11 @@ class Workspace():
 		time.sleep(5)
 		IPython.embed()
 		sd = objts.get_objects()
-		
+
 		trans, quat = self.calculate_ar_in_map(sd[0])
 
-		
-		
+
+
 		#Compute TOP MID
 		offsets = np.array([0.0, (2*OFFSET+TABLE_WIDTH), 0.0])
 		rot = np.array([0.0,0.0,-1.57])
@@ -187,10 +172,8 @@ if __name__ == "__main__":
 	tt.register(robot)
 
 
-	
+
 	IPython.embed()
 	tt.move_to_pose(omni_base,'lower_mid')
 	# tt.move_to_pose(omni_base,'right_corner')
 	# tt.move_to_pose(omni_base,'right_mid')
-	
-

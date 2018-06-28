@@ -1,8 +1,8 @@
 import numpy as np
 import cv2
 import IPython
-from connected_components import get_cluster_info
-from groups import Group
+from tpc.perception.connected_components import get_cluster_info
+from tpc.perception.groups import Group
 import matplotlib.pyplot as plt
 from sklearn.decomposition import PCA
 import time

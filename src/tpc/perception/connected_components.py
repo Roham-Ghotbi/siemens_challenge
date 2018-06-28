@@ -3,9 +3,9 @@ import math
 import cv2
 from scipy.ndimage.measurements import label
 from scipy.misc import imresize
-from union import UnionFind
+from tpc.perception.union import UnionFind
 from skimage.measure import block_reduce
-from groups import Group
+from tpc.perception.groups import Group
 from tpc.perception.image import ColorImage, BinaryImage
 import IPython
 import tpc.config.config_tpc as cfg
@@ -101,7 +101,7 @@ def merge_groups(groups, dist_tol):
 
         groups = unmerged_groups
         unmerged_groups = []
-        
+
     for g in merged_groups:
         g.compute_info()
 
