@@ -17,7 +17,7 @@ from tpc.manipulation.robot_actions import Robot_Actions
 # from tpc.data.data_logger import DataLogger
 import tpc.config.config_tpc as cfg
 from tpc.detection.detector import Detector
-from tpc.detection.maskrcnn_detect import detect
+from tpc.detection.maskrcnn_detection import detect
 
 if cfg.robot_name == "hsr":
     from core.hsr_robot_interface import Robot_Interface
@@ -26,8 +26,8 @@ elif cfg.robot_name == "fetch":
 elif cfg.robot_name is None:
     from tpc.offline.robot_interface import Robot_Interface
 
-sys.path.append("hsr_web/")
-from web_labeler import Web_Labeler
+# sys.path.append("hsr_web/")
+# from web_labeler import Web_Labeler
 
 import importlib
 img = importlib.import_module(cfg.IMG_MODULE)
@@ -267,8 +267,8 @@ if __name__ == "__main__":
     else:
         DEBUG = False
 
-    task = DeclutterDemo()
-    simple = True
+    task = DeclutterDemo(maskrcnn=True)
+    simple = False
     if simple:
         task.lego_demo()
     else:

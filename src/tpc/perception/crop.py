@@ -1,7 +1,7 @@
-from tkinter import *
-from tkinter.filedialog import askopenfilename
+from Tkinter import *
+from tkFileDialog import askopenfilename
 from PIL import Image, ImageTk
-import tkinter.ttk
+import ttk
 
 import numpy as np
 import cv2

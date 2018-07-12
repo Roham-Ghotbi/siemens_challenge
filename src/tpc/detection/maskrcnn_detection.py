@@ -1,3 +1,6 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 import matplotlib
 matplotlib.use('Agg')
 import os
@@ -15,7 +18,7 @@ import matplotlib.pyplot as plt
 import IPython
 
 # Root directory of the project
-ROOT_DIR = os.path.abspath("main/model/")
+ROOT_DIR = os.path.abspath("main/")
 
 # Import Mask RCNN
 # sys.path.append(ROOT_DIR)  # To find local version of the library
@@ -28,8 +31,8 @@ from mrcnn.model import log
 
 # Directory to save logs and trained model
 # ROOT_DIR = os.path.abspath("../")
-MODEL_DIR = os.path.join(ROOT_DIR, "logs")
-MODEL_DIR2 = os.path.join(ROOT_DIR, "logs")
+MODEL_DIR = os.path.join(ROOT_DIR, "model")
+MODEL_DIR2 = os.path.join(ROOT_DIR, "model")
 MODEL_PATH = os.path.join(MODEL_DIR2, "mask_rcnn_grasps.h5")
 # IMAGE_DIR = os.path.join(ROOT_DIR, "samples/shapes/dataset/images")
 

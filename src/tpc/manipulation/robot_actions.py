@@ -13,6 +13,7 @@ class Robot_Actions():
         time.sleep(3)
 
     def go_to_start_pose(self):
+        self.safe_wait()
         self.robot.body_start_pose()
         self.robot.head_start_pose()
         self.safe_wait()
@@ -45,10 +46,11 @@ class Robot_Actions():
             # print("Class is " + cfg.labels[class_num])
             print("Class is " + str(class_num))
             self.go_to_start_position()
+            self.robot.tilt_head()
             found = False
             i = 0
             while not found and i < 10:
-                found = self.robot.find_ar(class_num + 6) #AR numbers from 8 to 11
+                found = self.robot.find_ar(class_num + 8) #AR numbers from 8 to 11
                 if not found:
                     print(i)
                     curr_tilt = -1 + (i * 1.0)/5.0 #ranges from -1 to 1
