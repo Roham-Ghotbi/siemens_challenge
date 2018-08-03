@@ -6,13 +6,17 @@ import random
 import numpy as np
 import re
 
-LIMIT = {'x':(-0.1, 0.3), 'y':(0.8, 1.2), 'rad':(0, 3.14)}
+LIMIT = {'x':(-0.2, 0.2), 'y':(0.8, 1.2), 'rad':(0, 3.14)}
 # QUATER = tf.transformations.quaternion_from_euler(0,0,0)
 # ORIENT = Quaternion(QUATER[0], QUATER[1], QUATER[2], QUATER[3])
 
 MODEL_PATH = "/home/zisu/simulator/siemens_challenge/sim_world/toolbox/"
-MODEL_LIST = ["screwdriver1", "screwdriver2", "screwdriver3", "screwdriver4", "screwdriver5", "tape2", "tape3", "tube1", "hammer1", "wrench1"]#, "scrap1"]
-MODEL_TYPE = ["screwdriver", "tape", "tube", "scrap", "hammer", "wrench"]
+# MODEL_LIST = ["screwdriver1", "screwdriver2", "screwdriver3", "screwdriver4", "screwdriver5", "tape2", "tape3", "tube1", "hammer1", "wrench1"]#, "scrap1"]
+
+MODEL_TYPE = {"lightbulb": 1, "gear": 2, "shoe": 3, "pear": 1, "nozzle": 1, "dolphin": 1, "bowl": 3, "screwdriver": 9, "mug": 3, "tape": 2, "can": 2, "bottle": 9, "elephant": 4, "barClamp": 1, "banana": 1, "scrap": 1, "combinationWrench": 15, "hammer": 1, "openEndWrench": 3, "socketwrench": 3, "adjustableWrench": 4, "hexagonalCylinder": 3, "cylinder": 26, "rectangularCube": 47, "cat": 2, "doll": 2, "cube": 1, "milkPitcher": 1, "fish": 1, "juiceBox": 1, "heart": 1, "ellipticalCylinder": 1, "oilCan": 2, "moon": 1, "pitcher": 1, "pony": 1, "seal": 1, "shampooBottle": 2, "tube": 1, "tortoise": 1}
+
+# MODEL_LIST = ["screwdriver1", "screwdriver2", "screwdriver3", "screwdriver4", "screwdriver5", "tape2", "tape3", "tube1", "wrench1"]
+# MODEL_TYPE = ["screwdriver", "tape", "tube", "scrap", "wrench"]
 
 
 def setup_delete_spawn_service():
@@ -21,7 +25,6 @@ def setup_delete_spawn_service():
     # rospy.init_node("spawn_products_in_bins")
     rospy.wait_for_service("gazebo/delete_model")
     rospy.wait_for_service("gazebo/spawn_sdf_model")
-
     rospy.wait_for_service("gazebo/get_world_properties")
     print("Got it.")
     delete_model = rospy.ServiceProxy("gazebo/delete_model", DeleteModel)
@@ -33,6 +36,7 @@ def setup_delete_spawn_service():
 
 def get_object_list(object_monitor):
     lst = []
+    rospy.wait_for_service("gazebo/get_world_properties")
     for name in object_monitor().model_names:
         ind = re.search("\d", name)
         if ind == None:
@@ -46,6 +50,8 @@ def get_object_list(object_monitor):
     return lst
 
 def delete_object(name, delete_model):
+    rospy.wait_for_service("gazebo/delete_model")
+    print("Deleting Object.")
     delete_model(name)
     return name
 
@@ -53,15 +59,17 @@ def clean_floor(delete_model, object_monitor):
     object_lst = get_object_list(object_monitor)
     for obj in object_lst:
         delete_object(obj, delete_model)
-        rospy.sleep(2)
+        rospy.sleep(0.5)
 
 def spawn_from_uniform(n, spawn_model):
     tags = []
     for i in range(n):
         # item
-        model_tag = random.choice(MODEL_LIST)
+        model_tag = random.choice(MODEL_TYPE.keys())
+        model_index = random.choice(range(1, MODEL_TYPE[model_tag]+1))
+        model_paint = random.choice([0, 1])
 
-        with open(MODEL_PATH+model_tag+"/model.sdf", "r") as f:
+        with open(MODEL_PATH+model_tag+str(model_index)+"_"+str(model_paint)+"/model.sdf", "r") as f:
             object_xml = f.read()
 
         # pose
@@ -77,9 +85,10 @@ def spawn_from_uniform(n, spawn_model):
 
         # spawn
         object_name = model_tag+"_"+str(i)
+        rospy.wait_for_service("gazebo/spawn_sdf_model")
         spawn_model(object_name, object_xml, "", object_pose, "world")
         rospy.sleep(0.5)
-        tags.append(model_tag)
+        tags.append(model_tag+str(model_index)+"_"+str(model_paint))
     return tags
 
 def spawn_from_gaussian(n, spawn_model):
@@ -103,6 +112,7 @@ def spawn_from_gaussian(n, spawn_model):
 
         # spawn
         object_name = model_tag+"_"+str(i)
+        rospy.wait_for_service("gazebo/spawn_sdf_model")
         spawn_model(object_name, object_xml, "", object_pose, "world")
         rospy.sleep(0.5)
 

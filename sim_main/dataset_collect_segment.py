@@ -1,28 +1,19 @@
 import cv2
 import IPython
 import time
-import matplotlib.pyplot as plt
 import numpy as np
-from copy import deepcopy
 import sys
 
-from tpc.perception.cluster_registration import run_connected_components, display_grasps
-from tpc.perception.groups import Group
-from tpc.perception.singulation import Singulation
-from tpc.perception.crop import crop_img
 from tpc.manipulation.robot_actions import Robot_Actions
-from tpc.perception.connected_components import get_cluster_info, merge_groups
-from tpc.perception.bbox import Bbox, find_isolated_objects_by_overlap, select_first_obj, format_net_bboxes, draw_boxes, find_isolated_objects_by_distance
-from tpc.helper import Helper
 # from tpc.data_logger import DataLogger
 import tpc.config.config_tpc as cfg
-import importlib
 
 import thread
 import tf
 import rospy
 import os
 import json
+import shutil
 
 if cfg.robot_name == "hsr":
     from core.hsr_robot_interface import Robot_Interface
@@ -31,14 +22,23 @@ elif cfg.robot_name == "fetch":
 elif cfg.robot_name is None:
     from tpc.offline.robot_interface import Robot_Interface
 
-img = importlib.import_module(cfg.IMG_MODULE)
-ColorImage = getattr(img, 'ColorImage')
-BinaryImage = getattr(img, 'BinaryImage')
-
 sys.path.append('/home/zisu/simulator/siemens_challenge/sim_world')
 from spawn_object_script import *
-from gazebo_msgs.srv import DeleteModel, SpawnModel, GetWorldProperties
-from segmentation import *
+from gazebo_msgs.srv import DeleteModel, SpawnModel, GetWorldProperties, SetPhysicsProperties
+import gazebo_msgs.msg
+from std_msgs.msg import Float64
+
+# from segmentation import *
+from segmentation_rgb import *
+
+def depth_scaled_to_255(img):
+	img = 255.0/np.max(img)*img
+	img = np.array(img,dtype=np.uint8)
+	
+	img[:,:] = cv2.equalizeHist(img[:,:])
+	# cv2.imshow('debug.png',img)
+	return img
+
 
 
 class DataCollection():
@@ -49,76 +49,99 @@ class DataCollection():
 
 		"""
 		self.robot = Robot_Interface()
-		self.helper = Helper(cfg)
 		self.ra = Robot_Actions(self.robot)
-		# self.dl = DataLogger("stats_data/model_base", cfg.EVALUATE)
 
 		self.dm, self.sm, self.om = setup_delete_spawn_service()
-	
+
 		print "Finished init"
 
 		clean_floor(self.dm, self.om)
 
-		self.ra.go_to_start_pose()
 		time.sleep(2)
 
-	def collect(self, dataset_size=10):
 
-		IMDIR = 'sim_img_seg/'
-		# IMDIR_DEPTH = 'sim_img_seg/depth/'
+	def collect(self, dataset_size=100, start=0):
 
-		num = len([x for x in os.listdir(IMDIR)])
+		IMDIR = 'sim_data/dataset_08_02_2018/'
+		# IMDIR = 'sim_data/test_rgb/'
 
+		i = 0
 
-		for i in range(dataset_size):
-			print(i)
-			if not os.path.exists(IMDIR+str(i+num)):
-				os.makedirs(IMDIR+str(i+num))
+		while i < dataset_size:
+			print(i+start)
+			
+			if not os.path.exists(IMDIR+str(i+start)):
+				os.makedirs(IMDIR+str(i+start))
 
 			n = np.random.randint(5, 10)
 
 			spawn_from_uniform(n, self.sm)
+			
 			labels = get_object_list(self.om)
+			time.sleep(0.1)
+			self.ra.go_to_start_position()
+			self.ra.go_to_start_pose()
+			
+			time.sleep(0.1)
 
 			for j in range(len(labels)):
+				
 				c_img, d_img = self.robot.get_img_data()
 				delete_object(labels[len(labels) - 1 - j], self.dm)
-				cv2.imwrite(IMDIR+str(i+num)+'/rgb_{}.png'.format(str(len(labels) - 1 - j)), c_img)
-				cv2.imwrite(IMDIR+str(i+num)+'/depth_{}.png'.format(str(len(labels) - 1 - j)), d_img)
-				time.sleep(0.5)
+				cv2.imwrite(IMDIR+str(i+start)+'/rgb_{}.png'.format(str(len(labels) -1- j)), c_img)
+				cv2.imwrite(IMDIR+str(i+start)+'/depth_{}.png'.format(str(len(labels) -1- j)), depth_scaled_to_255(np.array((d_img * 1000).astype(np.int16))))
+				if j == 0:
+					cv2.imwrite(IMDIR+'/rgb_{}.png'.format(str(i+start)), c_img)
+					cv2.imwrite(IMDIR+'/depth_{}.png'.format(str(i+start)), depth_scaled_to_255(np.array((d_img * 1000).astype(np.int16))))
 
-			with open(IMDIR+str(i+num)+"/labels.json", 'w') as f:
-				json.dump(labels, f)
 			clean_floor(self.dm, self.om)
+			time.sleep(0.1)
 
-			find_item_masks(IMDIR+str(i+num))
-			draw_masks(IMDIR+str(i+num))
-			create_segment_label(IMDIR+str(i+num))
+			c_img, d_img = self.robot.get_img_data()
+
+			cv2.imwrite(IMDIR+str(i+start)+'/rgb_background.png', c_img)
+			cv2.imwrite(IMDIR+str(i+start)+'/depth_background.png', depth_scaled_to_255(np.array((d_img * 1000).astype(np.int16))))
+			# print(np.array((d_img * 1000).astype(np.int16)).dtype)
+
+			
+			with open(IMDIR+str(i+start)+"/labels.json", 'w') as f:
+				json.dump(labels, f)
+
+			find_item_masks(IMDIR+str(i+start))
+			# compare, diff, seg_image, bb_image = draw_masks(IMDIR+str(i+start))
 
 
-			time.sleep(3)
 
+			# if diff > 640*480/1:
+			# 	os.remove(IMDIR+'/rgb_{}.png'.format(str(i+start)))
+			# 	os.remove(IMDIR+'/depth_{}.png'.format(str(i+start)))
+			# else:
+			# 	cv2.imwrite(IMDIR+'/compare_{}.png'.format(str(i+start)), compare)
+			# 	cv2.imwrite(IMDIR+'/seg_{}.png'.format(str(i+start)), seg_image)
+			# 	cv2.imwrite(IMDIR+'/bb_{}.png'.format(str(i+start)), bb_image)
+			# 	create_segment_label(IMDIR, str(i+start))
 
+			# shutil.rmtree(IMDIR+str(i+start))
+			time.sleep(0.5)
 
-			# for j in range(np.random.randint(5, 10)):
-			# 	label = spawn_from_uniform(1, self.sm)
-			# 	time.sleep(3)
+			
 
-			# 	c_img, d_img = self.robot.get_img_data()
+			# if diff <= 640*480/1:
+			# 	i+=1
+			i += 1
 
-			# 	cv2.imwrite(IMDIR_RGB+str(i)+'/rgb_{}.png'.format(str(j)), c_img)
-			# 	# cv2.imwrite(IMDIR_DEPTH+'depth_{}.png'.format(str(num+i).zfill(4)), d_img)
-			# 	labels.append(label)
-			# 	time.sleep(0.5)
+			
 
-			# with open(IMDIR_RGB+str(i)+"/labels.json", 'w') as f:
-			# 	json.dump(labels, f)
-			# clean_floor(self.dm, self.om)
 			# time.sleep(3)
+			# self.ra.go_to_start_position()
+			# self.ra.go_to_start_pose()
+			
+			# time.sleep(2)
+
 
 
 if __name__ == "__main__":
-	DataCollection().collect()
+	DataCollection().collect(dataset_size=10000, start=0)
 
 
 

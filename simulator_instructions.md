@@ -93,6 +93,19 @@ To do this:
   - if you are looking for a script that automatically randomly generates objects and take pictures, use `sim_main/dataset_collect.py`;
   - otherwise if you hope to manually adjust poses via GUI, please use `quick_img_colle/get_hsr_img.py`. It is up-to-date with current robot interface. 
 
+#### Generate segmentation masks and bounding box labels for synthesized images
+
+Run `sim_main/dataset_collect_segment.py` under `sim_mode`; the script would result in a dataset in `sim_img_seg/` with folder structure of:
+```
+sim_img_seg/
+- [picture_number]/
+-- rgb_[timstamp].png
+-- depth_[timstamp].png
+-- rgb_[max timstamp].json
+-- rgb_[max timstamp].xml
+```
+where `rgb_[timstamp]` and `depth_[timstamp]` are the images we are investigating. The rest of the images are included for debugging purposes.
+
 ## Misc
 
 ### Gripper collision model

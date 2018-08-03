@@ -207,9 +207,9 @@ class SiemensDemo():
                     to_grasp = select_first_obj(single_objs)
                     singulation_time = 0.0
                     self.run_grasp(to_grasp, c_img, col_img, workspace_img, d_img)
-                    grasp_time = time.time() - start
-                    summary["time"].append(grasp_time)
-                    IPython.embed()
+                    # grasp_time = time.time() - start
+                    # summary["time"].append(grasp_time)
+                    # IPython.embed()
                     # grasp_success = self.dl.record_success("grasp", other_data=[c_img, vis_util_image, d_img])
                                 
                 # else:
